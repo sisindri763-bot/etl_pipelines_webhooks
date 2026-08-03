@@ -104,6 +104,7 @@
     }
     .tag-source { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
     .tag-target { background: rgba(6, 182, 212, 0.15); color: #38bdf8; border: 1px solid rgba(6, 182, 212, 0.3); }
+    .tag-tool { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
 
     .btn-submit {
       width: 100%; padding: 1rem; border: none; border-radius: 12px;
@@ -135,7 +136,6 @@
     }
     .badge-sf { background: rgba(6, 182, 212, 0.15); color: #38bdf8; }
     .badge-my { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
-    .badge-file { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
 
     .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); font-size: 0.9rem; }
   </style>
@@ -174,11 +174,17 @@
             </div>
             <div class="form-group">
               <label for="toolType">Orchestrator Tool *</label>
-              <select id="toolType">
+              <select id="toolType" onchange="renderToolFields()">
                 <option value="dbt">dbt Cloud</option>
                 <option value="airflow">Apache Airflow</option>
               </select>
             </div>
+          </div>
+
+          <!-- ORCHESTRATOR TOOL CONFIGURATION -->
+          <div class="connector-section">
+            <div class="connector-tag tag-tool">⚙️ Orchestrator Credentials</div>
+            <div id="toolFields"></div>
           </div>
 
           <!-- SOURCE CONNECTOR SECTION -->
@@ -213,7 +219,7 @@
             <div id="targetFields"></div>
           </div>
 
-          <button type="submit" class="btn-submit">⚡ Save & Register Connector to AWS RDS MySQL</button>
+          <button type="submit" class="btn-submit">⚡ Save & Register Credentials to AWS RDS MySQL</button>
         </form>
       </div>
 
@@ -235,7 +241,7 @@
               </tr>
             </thead>
             <tbody id="pipelineTableBody">
-              <tr><td colspan="4" class="empty-state">Loading active connectors...</td></tr>
+              <tr><td colspan="4" class="empty-state">No active connectors found in AWS RDS MySQL.</td></tr>
             </tbody>
           </table>
         </div>
@@ -264,6 +270,22 @@
       } catch (err) {
         dot.className = 'pulse-dot';
         text.textContent = 'Connection Error';
+      }
+    }
+
+    function renderToolFields() {
+      const type = document.getElementById('toolType').value;
+      const container = document.getElementById('toolFields');
+      if (type === 'dbt') {
+        container.innerHTML = `
+          <div class="form-row">
+            <div class="form-group"><label>dbt Account ID *</label><input type="text" id="dbt_account_id" placeholder="e.g. 70506183151322" required></div>
+            <div class="form-group"><label>dbt API Token *</label><input type="password" id="dbt_api_token" placeholder="e.g. dbtc_awsYUPo..." required></div>
+          </div>
+          <div class="form-group"><label>dbt Base URL</label><input type="text" id="dbt_base_url" placeholder="https://li589.us1.dbt.com"></div>
+        `;
+      } else {
+        container.innerHTML = `<div class="form-group"><label>Airflow Host URL *</label><input type="text" id="af_url" placeholder="http://airflow.example.com" required></div>`;
       }
     }
 
@@ -302,7 +324,7 @@
           </div>
         `;
       } else {
-        container.innerHTML = `<div class="form-group"><label>File Path or URL *</label><input type="text" id="src_path" placeholder="e.g. https://example.com/data.csv or /path/file.csv" required></div>`;
+        container.innerHTML = `<div class="form-group"><label>File Path or URL *</label><input type="text" id="src_path" placeholder="e.g. https://example.com/data.csv" required></div>`;
       }
     }
 
@@ -342,6 +364,19 @@
         `;
       } else {
         container.innerHTML = `<div class="form-group"><label>Target File Path or URL *</label><input type="text" id="tgt_path" placeholder="e.g. /path/to/target.csv" required></div>`;
+      }
+    }
+
+    function buildToolConfig() {
+      const type = document.getElementById('toolType').value;
+      if (type === 'dbt') {
+        return {
+          account_id: document.getElementById('dbt_account_id').value,
+          api_token: document.getElementById('dbt_api_token').value,
+          base_url: document.getElementById('dbt_base_url').value || 'https://cloud.getdbt.com'
+        };
+      } else {
+        return { url: document.getElementById('af_url').value };
       }
     }
 
@@ -402,6 +437,7 @@
       const payload = {
         job_id: document.getElementById('jobId').value,
         tool_type: document.getElementById('toolType').value,
+        tool_config: buildToolConfig(),
         source_type: document.getElementById('sourceType').value,
         source_config: buildSourceConfig(),
         target_type: document.getElementById('targetType').value,
@@ -419,8 +455,9 @@
         toast.style.display = 'block';
         if (res.ok) {
           toast.className = 'toast toast-success';
-          toast.textContent = `✓ Connector registered successfully in AWS RDS MySQL for Job ID: ${payload.job_id}`;
+          toast.textContent = `✓ Connector & dbt Credentials saved successfully to AWS RDS MySQL for Job ID: ${payload.job_id}`;
           document.getElementById('pipelineForm').reset();
+          renderToolFields();
           renderSourceFields();
           renderTargetFields();
           fetchPipelines();
@@ -469,6 +506,7 @@
     }
 
     // Initialize blank forms
+    renderToolFields();
     renderSourceFields();
     renderTargetFields();
     pingServer();

@@ -401,6 +401,7 @@ def save_pipeline_run(
                     orchestrator_task_id = VALUES(orchestrator_task_id),
                     orchestrator_run_id = VALUES(orchestrator_run_id)
             """, params)
+        conn.commit()
         conn.close()
         logger.info("Saved pipeline_run to MySQL: run_id=%s uuid=%s", run_id, valid_uuid)
     elif is_postgres():
@@ -517,6 +518,7 @@ def save_source_asset_metadata(
                     column_names = VALUES(column_names),
                     last_updated_at = VALUES(last_updated_at)
             """, params)
+        conn.commit()
         conn.close()
     elif is_postgres():
         with _get_pg_conn() as conn:
@@ -617,6 +619,7 @@ def save_target_asset_metadata(
                     column_names = VALUES(column_names),
                     last_updated_at = VALUES(last_updated_at)
             """, params)
+        conn.commit()
         conn.close()
     elif is_postgres():
         with _get_pg_conn() as conn:

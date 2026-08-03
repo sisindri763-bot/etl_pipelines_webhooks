@@ -3,147 +3,176 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pipeline Connector Hub & Monitoring Studio</title>
+  <title>Pipeline Connector Hub — Enterprise Data Integration</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-primary: #0a0d14;
-      --bg-card: rgba(18, 24, 38, 0.75);
-      --bg-input: rgba(10, 14, 23, 0.6);
-      --border-color: rgba(255, 255, 255, 0.1);
-      --border-glow: rgba(99, 102, 241, 0.4);
-      --text-primary: #f3f4f6;
-      --text-secondary: #9ca3af;
+      --bg-dark: #07090e;
+      --bg-card: rgba(15, 22, 36, 0.85);
+      --bg-input: rgba(10, 14, 23, 0.7);
+      --border: rgba(255, 255, 255, 0.08);
+      --border-focus: #6366f1;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
       --accent-indigo: #6366f1;
       --accent-purple: #a855f7;
       --accent-cyan: #06b6d4;
       --success: #10b981;
-      --warning: #f59e0b;
       --danger: #ef4444;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
     body {
-      background-color: var(--bg-primary);
-      color: var(--text-primary);
+      background-color: var(--bg-dark);
+      color: var(--text-main);
       min-height: 100vh;
       background-image: 
-        radial-gradient(at 10% 10%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
-        radial-gradient(at 90% 90%, rgba(168, 85, 247, 0.15) 0px, transparent 50%);
-      padding: 2rem 1.5rem;
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.12) 0px, transparent 50%);
+      padding: 2.5rem 2rem;
     }
 
-    .container { max-width: 1280px; margin: 0 auto; }
+    .container { max-width: 1400px; margin: 0 auto; }
+    
     header {
       display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);
+      margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border);
     }
-    .logo-group { display: flex; align-items: center; gap: 0.75rem; }
-    .logo-badge {
-      width: 42px; height: 42px; border-radius: 12px;
+    .logo-container { display: flex; align-items: center; gap: 1rem; }
+    .logo-icon {
+      width: 48px; height: 48px; border-radius: 14px;
       background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple));
-      display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem;
+      display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 700;
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
     }
-    h1 { font-size: 1.5rem; font-weight: 700; background: linear-gradient(to right, #fff, #9ca3af); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    
-    .server-status {
-      display: flex; align-items: center; gap: 0.75rem; background: var(--bg-card);
-      padding: 0.5rem 1rem; border-radius: 20px; border: 1px solid var(--border-color); font-size: 0.875rem;
-    }
-    .status-dot { width: 10px; height: 10px; border-radius: 50%; background-color: var(--warning); box-shadow: 0 0 10px var(--warning); }
-    .status-dot.online { background-color: var(--success); box-shadow: 0 0 10px var(--success); }
+    h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
+    .subtitle { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem; }
 
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
-    @media (max-width: 1024px) { .grid { grid-template-columns: 1fr; } }
+    .server-bar {
+      display: flex; align-items: center; gap: 0.75rem;
+      background: var(--bg-card); padding: 0.6rem 1.2rem; border-radius: 30px;
+      border: 1px solid var(--border); font-size: 0.85rem;
+    }
+    .pulse-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #f59e0b;
+      box-shadow: 0 0 10px #f59e0b; transition: all 0.3s;
+    }
+    .pulse-dot.online { background: var(--success); box-shadow: 0 0 10px var(--success); }
+
+    .layout-grid {
+      display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 2rem;
+    }
+    @media (max-width: 1100px) { .layout-grid { grid-template-columns: 1fr; } }
 
     .card {
-      background: var(--bg-card); backdrop-filter: blur(16px);
-      border: 1px solid var(--border-color); border-radius: 16px; padding: 1.75rem;
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); transition: border-color 0.3s;
+      background: var(--bg-card); backdrop-filter: blur(20px);
+      border: 1px solid var(--border); border-radius: 20px; padding: 2rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
     }
-    .card:hover { border-color: var(--border-glow); }
-    .card-title { font-size: 1.15rem; font-weight: 600; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; }
+    .card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1.75rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border);
+    }
+    .card-title { font-size: 1.2rem; font-weight: 600; display: flex; align-items: center; gap: 0.6rem; }
 
     .form-group { margin-bottom: 1.25rem; }
-    label { display: block; font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.4rem; }
+    .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+    
+    label { display: block; font-size: 0.8rem; font-weight: 500; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    
     input, select {
-      width: 100%; padding: 0.75rem 1rem; background: var(--bg-input);
-      border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary);
-      font-size: 0.9rem; outline: none; transition: all 0.2s;
+      width: 100%; padding: 0.8rem 1rem; background: var(--bg-input);
+      border: 1px solid var(--border); border-radius: 10px; color: var(--text-main);
+      font-size: 0.9rem; transition: all 0.2s; outline: none;
     }
-    input:focus, select:focus { border-color: var(--accent-indigo); box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); }
-
-    .flex-row { display: flex; gap: 1rem; }
-    .flex-1 { flex: 1; }
-
-    .btn {
-      width: 100%; padding: 0.85rem; border: none; border-radius: 10px; font-weight: 600;
-      cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    input:focus, select:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
     }
-    .btn-primary {
+    input::placeholder { color: rgba(156, 163, 175, 0.4); }
+
+    .connector-section {
+      background: rgba(10, 14, 23, 0.4); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.5rem; margin-bottom: 1.5rem; position: relative;
+    }
+    .connector-tag {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+      padding: 0.35rem 0.75rem; border-radius: 20px; margin-bottom: 1.25rem;
+    }
+    .tag-source { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
+    .tag-target { background: rgba(6, 182, 212, 0.15); color: #38bdf8; border: 1px solid rgba(6, 182, 212, 0.3); }
+
+    .btn-submit {
+      width: 100%; padding: 1rem; border: none; border-radius: 12px;
       background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple));
-      color: #fff; box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.39);
+      color: white; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4); transition: all 0.25s;
     }
-    .btn-primary:hover { opacity: 0.92; transform: translateY(-1px); }
-    .btn-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.4rem 0.75rem; border-radius: 6px; font-size: 0.8rem; }
-    .btn-danger:hover { background: rgba(239, 68, 68, 0.3); }
+    .btn-submit:hover { opacity: 0.94; transform: translateY(-2px); box-shadow: 0 6px 24px rgba(99, 102, 241, 0.5); }
 
-    .connector-box {
-      background: rgba(10, 14, 23, 0.4); border: 1px dashed var(--border-color);
-      border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem;
+    .btn-delete {
+      background: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.25);
+      padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: all 0.2s;
     }
-    .connector-header { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; margin-bottom: 1rem; color: var(--accent-cyan); }
+    .btn-delete:hover { background: rgba(239, 68, 68, 0.25); }
 
-    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-    th { text-align: left; padding: 0.75rem 1rem; font-size: 0.8rem; color: var(--text-secondary); border-bottom: 1px solid var(--border-color); }
-    td { padding: 0.85rem 1rem; font-size: 0.875rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+    .toast {
+      padding: 1rem 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; font-size: 0.9rem; display: none;
+    }
+    .toast-success { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; }
+    .toast-error { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; }
+
+    table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    th { text-align: left; padding: 0.85rem 1rem; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+    td { padding: 1rem; font-size: 0.875rem; border-bottom: 1px solid rgba(255, 255, 255, 0.04); }
     tr:hover td { background: rgba(255, 255, 255, 0.02); }
 
-    .badge { padding: 0.25rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
-    .badge-success { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-    .badge-snowflake { background: rgba(6, 182, 212, 0.15); color: #38bdf8; }
-    .badge-mysql { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .badge {
+      display: inline-block; padding: 0.25rem 0.65rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+    }
+    .badge-sf { background: rgba(6, 182, 212, 0.15); color: #38bdf8; }
+    .badge-my { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .badge-file { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
 
-    .alert { padding: 1rem; border-radius: 10px; margin-bottom: 1rem; display: none; font-size: 0.9rem; }
-    .alert-success { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; }
-    .alert-error { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; }
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); font-size: 0.9rem; }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
-      <div class="logo-group">
-        <div class="logo-badge">⚡</div>
+      <div class="logo-container">
+        <div class="logo-icon">⚡</div>
         <div>
           <h1>Pipeline Connector Hub</h1>
-          <p style="font-size: 0.8rem; color: var(--text-secondary);">Multi-Adapter Webhook Integration Engine</p>
+          <div class="subtitle">AWS RDS MySQL Central Configuration & Webhook Engine</div>
         </div>
       </div>
-      <div class="server-status">
-        <div id="statusDot" class="status-dot"></div>
-        <span id="statusText">Connecting to Server...</span>
-        <input type="text" id="serverUrl" value="http://16.112.104.242:5000" style="width: 210px; padding: 0.25rem 0.5rem; font-size: 0.8rem;" onchange="pingServer()">
+      <div class="server-bar">
+        <div id="statusDot" class="pulse-dot"></div>
+        <span id="statusText">Checking AWS Server...</span>
+        <input type="text" id="serverUrl" value="http://16.112.104.242:5000" style="width: 200px; padding: 0.3rem 0.6rem; font-size: 0.8rem;" onchange="pingServer()">
       </div>
     </header>
 
-    <div id="alertBox" class="alert"></div>
+    <div id="toastBox" class="toast"></div>
 
-    <div class="grid">
-      <!-- REGISTER CONNECTOR FORM -->
+    <div class="layout-grid">
+      <!-- REGISTER CONNECTOR CARD -->
       <div class="card">
-        <div class="card-title">
-          <span>🔌 Register New Pipeline Connector</span>
+        <div class="card-header">
+          <div class="card-title">🔌 Register Pipeline Connector</div>
         </div>
 
-        <form id="connectorForm" onsubmit="handleRegister(event)">
-          <div class="flex-row">
-            <div class="form-group flex-1">
+        <form id="pipelineForm" onsubmit="submitPipeline(event)">
+          <div class="form-row">
+            <div class="form-group">
               <label for="jobId">Job / Pipeline ID *</label>
               <input type="text" id="jobId" placeholder="e.g. 70506183135814" required>
             </div>
-            <div class="form-group flex-1">
+            <div class="form-group">
               <label for="toolType">Orchestrator Tool *</label>
               <select id="toolType">
                 <option value="dbt">dbt Cloud</option>
@@ -152,11 +181,11 @@
             </div>
           </div>
 
-          <!-- SOURCE CONNECTOR -->
-          <div class="connector-box">
-            <div class="connector-header">📥 SOURCE CONNECTOR</div>
+          <!-- SOURCE CONNECTOR SECTION -->
+          <div class="connector-section">
+            <div class="connector-tag tag-source">📥 Source Connector</div>
             <div class="form-group">
-              <label for="sourceType">Source Type</label>
+              <label for="sourceType">Select Source Platform</label>
               <select id="sourceType" onchange="renderSourceFields()">
                 <option value="snowflake">Snowflake (Data Warehouse)</option>
                 <option value="mysql">MySQL Database</option>
@@ -168,11 +197,11 @@
             <div id="sourceFields"></div>
           </div>
 
-          <!-- TARGET CONNECTOR -->
-          <div class="connector-box">
-            <div class="connector-header">📤 TARGET CONNECTOR</div>
+          <!-- TARGET CONNECTOR SECTION -->
+          <div class="connector-section">
+            <div class="connector-tag tag-target">📤 Target Connector</div>
             <div class="form-group">
-              <label for="targetType">Target Type</label>
+              <label for="targetType">Select Target Platform</label>
               <select id="targetType" onchange="renderTargetFields()">
                 <option value="snowflake">Snowflake (Data Warehouse)</option>
                 <option value="mysql">MySQL Database</option>
@@ -184,17 +213,17 @@
             <div id="targetFields"></div>
           </div>
 
-          <button type="submit" class="btn btn-primary">⚡ Register Pipeline Connector</button>
+          <button type="submit" class="btn-submit">⚡ Save & Register Connector to AWS RDS MySQL</button>
         </form>
       </div>
 
-      <!-- REGISTERED CONNECTOR LIST -->
+      <!-- REGISTERED PIPELINES LIST CARD -->
       <div class="card">
-        <div class="card-title">
-          <span>📋 Registered Connectors (AWS RDS MySQL)</span>
-          <button onclick="loadPipelines()" style="background:none; border:none; color:var(--accent-indigo); cursor:pointer; font-size:0.85rem;">🔄 Refresh</button>
+        <div class="card-header">
+          <div class="card-title">📋 Active Connectors (AWS RDS MySQL)</div>
+          <button onclick="fetchPipelines()" style="background:none; border:none; color:var(--accent-indigo); cursor:pointer; font-size:0.85rem; font-weight:600;">🔄 Refresh</button>
         </div>
-        
+
         <div style="overflow-x: auto;">
           <table>
             <thead>
@@ -205,28 +234,8 @@
                 <th>Action</th>
               </tr>
             </thead>
-            <tbody id="pipelinesList">
-              <tr><td colspan="4" style="text-align:center; color:var(--text-secondary);">Loading registered pipelines...</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="card-title" style="margin-top: 2rem;">
-          <span>📈 Execution Run Logs</span>
-          <button onclick="loadRuns()" style="background:none; border:none; color:var(--accent-indigo); cursor:pointer; font-size:0.85rem;">🔄 Refresh</button>
-        </div>
-        <div style="overflow-x: auto;">
-          <table>
-            <thead>
-              <tr>
-                <th>Run ID</th>
-                <th>Status</th>
-                <th>Duration</th>
-                <th>Timestamp</th>
-              </tr>
-            </thead>
-            <tbody id="runsList">
-              <tr><td colspan="4" style="text-align:center; color:var(--text-secondary);">Loading execution logs...</td></tr>
+            <tbody id="pipelineTableBody">
+              <tr><td colspan="4" class="empty-state">Loading active connectors...</td></tr>
             </tbody>
           </table>
         </div>
@@ -245,16 +254,15 @@
       try {
         const res = await fetch(`${getServerUrl()}/health`);
         if (res.ok) {
-          dot.className = 'status-dot online';
-          text.textContent = 'Server Online (AWS EC2)';
-          loadPipelines();
-          loadRuns();
+          dot.className = 'pulse-dot online';
+          text.textContent = 'AWS EC2 Server Online';
+          fetchPipelines();
         } else {
-          dot.className = 'status-dot';
+          dot.className = 'pulse-dot';
           text.textContent = 'Server Unreachable';
         }
       } catch (err) {
-        dot.className = 'status-dot';
+        dot.className = 'pulse-dot';
         text.textContent = 'Connection Error';
       }
     }
@@ -264,37 +272,37 @@
       const container = document.getElementById('sourceFields');
       if (type === 'snowflake') {
         container.innerHTML = `
-          <div class="flex-row">
-            <div class="form-group flex-1"><label>Account *</label><input type="text" id="src_sf_account" value="jd97000.ap-southeast-7.aws" required></div>
-            <div class="form-group flex-1"><label>User *</label><input type="text" id="src_sf_user" value="Sasi9392" required></div>
+          <div class="form-row">
+            <div class="form-group"><label>Account *</label><input type="text" id="src_sf_account" placeholder="e.g. xy12345.ap-southeast-7.aws" required></div>
+            <div class="form-group"><label>User *</label><input type="text" id="src_sf_user" placeholder="e.g. sf_user" required></div>
           </div>
-          <div class="flex-row">
-            <div class="form-group flex-1"><label>Password *</label><input type="password" id="src_sf_pass" value="Sasi@9392373845" required></div>
-            <div class="form-group flex-1"><label>Warehouse *</label><input type="text" id="src_sf_wh" value="COMPUTE_WH" required></div>
+          <div class="form-row">
+            <div class="form-group"><label>Password *</label><input type="password" id="src_sf_pass" placeholder="••••••••••••" required></div>
+            <div class="form-group"><label>Warehouse *</label><input type="text" id="src_sf_wh" placeholder="e.g. COMPUTE_WH" required></div>
           </div>
-          <div class="flex-row">
-            <div class="form-group flex-1"><label>Database *</label><input type="text" id="src_sf_db" value="ANALYTICS_DB" required></div>
-            <div class="form-group flex-1"><label>Schema *</label><input type="text" id="src_sf_schema" value="RAW" required></div>
-            <div class="form-group flex-1"><label>Table *</label><input type="text" id="src_sf_table" value="STOCK_DATA_RAW" required></div>
+          <div class="form-row">
+            <div class="form-group"><label>Database *</label><input type="text" id="src_sf_db" placeholder="e.g. ANALYTICS_DB" required></div>
+            <div class="form-group"><label>Schema *</label><input type="text" id="src_sf_schema" placeholder="e.g. RAW" required></div>
+            <div class="form-group"><label>Table *</label><input type="text" id="src_sf_table" placeholder="e.g. STOCK_DATA_RAW" required></div>
           </div>
         `;
       } else if (type === 'mysql') {
         container.innerHTML = `
-          <div class="flex-row">
-            <div class="form-group flex-1"><label>Host *</label><input type="text" id="src_my_host" placeholder="localhost" required></div>
-            <div class="form-group flex-1"><label>Port</label><input type="number" id="src_my_port" value="3306"></div>
+          <div class="form-row">
+            <div class="form-group"><label>Host *</label><input type="text" id="src_my_host" placeholder="e.g. database-1.xxx.rds.amazonaws.com" required></div>
+            <div class="form-group"><label>Port</label><input type="number" id="src_my_port" placeholder="3306" value="3306"></div>
           </div>
-          <div class="flex-row">
-            <div class="form-group flex-1"><label>User *</label><input type="text" id="src_my_user" required></div>
-            <div class="form-group flex-1"><label>Password *</label><input type="password" id="src_my_pass" required></div>
+          <div class="form-row">
+            <div class="form-group"><label>User *</label><input type="text" id="src_my_user" placeholder="e.g. db_admin" required></div>
+            <div class="form-group"><label>Password *</label><input type="password" id="src_my_pass" placeholder="••••••••••••" required></div>
           </div>
-          <div class="flex-row">
-            <div class="form-group flex-1"><label>Database *</label><input type="text" id="src_my_db" required></div>
-            <div class="form-group flex-1"><label>Table *</label><input type="text" id="src_my_table" required></div>
+          <div class="form-row">
+            <div class="form-group"><label>Database *</label><input type="text" id="src_my_db" placeholder="e.g. sales_db" required></div>
+            <div class="form-group"><label>Table *</label><input type="text" id="src_my_table" placeholder="e.g. orders" required></div>
           </div>
         `;
       } else {
-        container.innerHTML = `<div class="form-group"><label>URL / File Path *</label><input type="text" id="src_path" placeholder="https://example.com/data.csv" required></div>`;
+        container.innerHTML = `<div class="form-group"><label>File Path or URL *</label><input type="text" id="src_path" placeholder="e.g. https://example.com/data.csv or /path/file.csv" required></div>`;
       }
     }
 
@@ -303,37 +311,37 @@
       const container = document.getElementById('targetFields');
       if (type === 'snowflake') {
         container.innerHTML = `
-          <div class="flex-row">
-            <div class="form-group flex-1"><label>Account *</label><input type="text" id="tgt_sf_account" value="jd97000.ap-southeast-7.aws" required></div>
-            <div class="form-group flex-1"><label>User *</label><input type="text" id="tgt_sf_user" value="Sasi9392" required></div>
+          <div class="form-row">
+            <div class="form-group"><label>Account *</label><input type="text" id="tgt_sf_account" placeholder="e.g. xy12345.ap-southeast-7.aws" required></div>
+            <div class="form-group"><label>User *</label><input type="text" id="tgt_sf_user" placeholder="e.g. sf_user" required></div>
           </div>
-          <div class="flex-row">
-            <div class="form-group flex-1"><label>Password *</label><input type="password" id="tgt_sf_pass" value="Sasi@9392373845" required></div>
-            <div class="form-group flex-1"><label>Warehouse *</label><input type="text" id="tgt_sf_wh" value="COMPUTE_WH" required></div>
+          <div class="form-row">
+            <div class="form-group"><label>Password *</label><input type="password" id="tgt_sf_pass" placeholder="••••••••••••" required></div>
+            <div class="form-group"><label>Warehouse *</label><input type="text" id="tgt_sf_wh" placeholder="e.g. COMPUTE_WH" required></div>
           </div>
-          <div class="flex-row">
-            <div class="form-group flex-1"><label>Database *</label><input type="text" id="tgt_sf_db" value="ANALYTICS_DB" required></div>
-            <div class="form-group flex-1"><label>Schema *</label><input type="text" id="tgt_sf_schema" value="STAGING_STAGING" required></div>
-            <div class="form-group flex-1"><label>Table *</label><input type="text" id="tgt_sf_table" value="STG_STOCK_DATA" required></div>
+          <div class="form-row">
+            <div class="form-group"><label>Database *</label><input type="text" id="tgt_sf_db" placeholder="e.g. ANALYTICS_DB" required></div>
+            <div class="form-group"><label>Schema *</label><input type="text" id="tgt_sf_schema" placeholder="e.g. STAGING" required></div>
+            <div class="form-group"><label>Table *</label><input type="text" id="tgt_sf_table" placeholder="e.g. STG_STOCK_DATA" required></div>
           </div>
         `;
       } else if (type === 'mysql') {
         container.innerHTML = `
-          <div class="flex-row">
-            <div class="form-group flex-1"><label>Host *</label><input type="text" id="tgt_my_host" placeholder="localhost" required></div>
-            <div class="form-group flex-1"><label>Port</label><input type="number" id="tgt_my_port" value="3306"></div>
+          <div class="form-row">
+            <div class="form-group"><label>Host *</label><input type="text" id="tgt_my_host" placeholder="e.g. database-1.xxx.rds.amazonaws.com" required></div>
+            <div class="form-group"><label>Port</label><input type="number" id="tgt_my_port" placeholder="3306" value="3306"></div>
           </div>
-          <div class="flex-row">
-            <div class="form-group flex-1"><label>User *</label><input type="text" id="tgt_my_user" required></div>
-            <div class="form-group flex-1"><label>Password *</label><input type="password" id="tgt_my_pass" required></div>
+          <div class="form-row">
+            <div class="form-group"><label>User *</label><input type="text" id="tgt_my_user" placeholder="e.g. db_admin" required></div>
+            <div class="form-group"><label>Password *</label><input type="password" id="tgt_my_pass" placeholder="••••••••••••" required></div>
           </div>
-          <div class="flex-row">
-            <div class="form-group flex-1"><label>Database *</label><input type="text" id="tgt_my_db" required></div>
-            <div class="form-group flex-1"><label>Table *</label><input type="text" id="tgt_my_table" required></div>
+          <div class="form-row">
+            <div class="form-group"><label>Database *</label><input type="text" id="tgt_my_db" placeholder="e.g. analytics_db" required></div>
+            <div class="form-group"><label>Table *</label><input type="text" id="tgt_my_table" placeholder="e.g. target_orders" required></div>
           </div>
         `;
       } else {
-        container.innerHTML = `<div class="form-group"><label>Target URL / Path *</label><input type="text" id="tgt_path" placeholder="https://example.com/output.csv" required></div>`;
+        container.innerHTML = `<div class="form-group"><label>Target File Path or URL *</label><input type="text" id="tgt_path" placeholder="e.g. /path/to/target.csv" required></div>`;
       }
     }
 
@@ -389,7 +397,7 @@
       }
     }
 
-    async function handleRegister(e) {
+    async function submitPipeline(e) {
       e.preventDefault();
       const payload = {
         job_id: document.getElementById('jobId').value,
@@ -407,39 +415,43 @@
           body: JSON.stringify(payload)
         });
         const data = await res.json();
-        const alert = document.getElementById('alertBox');
-        alert.style.display = 'block';
+        const toast = document.getElementById('toastBox');
+        toast.style.display = 'block';
         if (res.ok) {
-          alert.className = 'alert alert-success';
-          alert.textContent = `✓ Connector registered successfully for Job ID: ${payload.job_id}`;
-          loadPipelines();
+          toast.className = 'toast toast-success';
+          toast.textContent = `✓ Connector registered successfully in AWS RDS MySQL for Job ID: ${payload.job_id}`;
+          document.getElementById('pipelineForm').reset();
+          renderSourceFields();
+          renderTargetFields();
+          fetchPipelines();
         } else {
-          alert.className = 'alert alert-error';
-          alert.textContent = `✕ Registration failed: ${data.description || data.message}`;
+          toast.className = 'toast toast-error';
+          toast.textContent = `✕ Registration Failed: ${data.description || data.message || 'Error saving to database'}`;
         }
       } catch (err) {
-        alert.style.display = 'block';
-        alert.className = 'alert alert-error';
-        alert.textContent = `✕ Network Error: ${err.message}`;
+        const toast = document.getElementById('toastBox');
+        toast.style.display = 'block';
+        toast.className = 'toast toast-error';
+        toast.textContent = `✕ Network Error: ${err.message}`;
       }
     }
 
-    async function loadPipelines() {
+    async function fetchPipelines() {
       try {
         const res = await fetch(`${getServerUrl()}/admin/list-configs`);
         const data = await res.json();
-        const tbody = document.getElementById('pipelinesList');
+        const tbody = document.getElementById('pipelineTableBody');
         if (data.pipelines && data.pipelines.length > 0) {
           tbody.innerHTML = data.pipelines.map(p => `
             <tr>
               <td><strong>${p.job_id}</strong></td>
-              <td><span class="badge badge-snowflake">${p.source_type}</span></td>
-              <td><span class="badge badge-mysql">${p.target_type}</span></td>
-              <td><button class="btn-danger" onclick="deletePipeline('${p.job_id}')">Delete</button></td>
+              <td><span class="badge badge-sf">${p.source_type}</span></td>
+              <td><span class="badge badge-my">${p.target_type}</span></td>
+              <td><button class="btn-delete" onclick="deletePipeline('${p.job_id}')">Delete</button></td>
             </tr>
           `).join('');
         } else {
-          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-secondary);">No registered pipelines found</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="4" class="empty-state">No active connectors found in AWS RDS MySQL.</td></tr>`;
         }
       } catch (err) {
         console.error(err);
@@ -447,40 +459,16 @@
     }
 
     async function deletePipeline(jobId) {
-      if (!confirm(`Delete pipeline '${jobId}'?`)) return;
+      if (!confirm(`Delete connector '${jobId}' from AWS RDS MySQL?`)) return;
       try {
         const res = await fetch(`${getServerUrl()}/admin/delete-config/${jobId}`, { method: 'DELETE' });
-        if (res.ok) {
-          loadPipelines();
-        }
+        if (res.ok) fetchPipelines();
       } catch (err) {
         alert(err.message);
       }
     }
 
-    async function loadRuns() {
-      try {
-        const res = await fetch(`${getServerUrl()}/admin/runs`);
-        const data = await res.json();
-        const tbody = document.getElementById('runsList');
-        if (data.runs && data.runs.length > 0) {
-          tbody.innerHTML = data.runs.map(r => `
-            <tr>
-              <td><code style="font-size:0.75rem; color:var(--accent-indigo);">${r.id}</code></td>
-              <td><span class="badge badge-success">${r.status}</span></td>
-              <td>${r.duration || 0}s</td>
-              <td style="font-size:0.75rem; color:var(--text-secondary);">${r.saved_at}</td>
-            </tr>
-          `).join('');
-        } else {
-          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-secondary);">No execution runs found</td></tr>`;
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    // Initialize
+    // Initialize blank forms
     renderSourceFields();
     renderTargetFields();
     pingServer();

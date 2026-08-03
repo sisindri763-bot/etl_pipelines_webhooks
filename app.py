@@ -64,6 +64,18 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, DELETE, OPTIONS"
+    return response
+
+@app.route("/", methods=["OPTIONS"])
+@app.route("/<path:path>", methods=["OPTIONS"])
+def options_handler(path=None):
+    return "", 200
+
 # Initialise both DBs on startup
 init_db()
 init_results_db()

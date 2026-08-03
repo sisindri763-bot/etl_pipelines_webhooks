@@ -113,7 +113,7 @@ class DbtCloudLogAdapter(LogAdapter):
             "rows_read":            None,    # dbt does not expose rows read
             "rows_written":         None,    # dbt does not expose rows written
             "error_message":        error_message,
-            "raw_log":              json.dumps(run_data),
+            "raw_log":              run_data,
             "execution_mode":       execution_mode,
             "triggered_by":         context.get("triggered_by") or triggered_cause,
             "orchestrator_tool":    orchestrator_tool,

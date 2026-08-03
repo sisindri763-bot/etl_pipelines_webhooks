@@ -270,14 +270,20 @@ def dbt_webhook(user_id: str):
         rows_written = tgt_dict.get("row_count") if isinstance(tgt_dict, dict) else None
 
         log_val = result.get("log")
+        orch_tool = orchestrator_context.get("orchestrator_tool") or (log_val.get("orchestrator_tool") if isinstance(log_val, dict) else None)
+        exec_mode = "orchestrated" if orch_tool else "native"
+
         if isinstance(log_val, dict):
             log_payload = dict(log_val)
             log_payload["rows_read"] = rows_read
             log_payload["rows_written"] = rows_written
             log_payload["pipeline_name"] = log_payload.get("pipeline_name") or pipeline.get("target_config", {}).get("table") or job_id
-            log_payload["orchestrator_tool"] = log_payload.get("orchestrator_tool") or orchestrator_context.get("orchestrator_tool") or pipeline.get("tool_type", "dbt")
-            log_payload["execution_mode"] = log_payload.get("execution_mode") or orchestrator_context.get("execution_mode") or "native"
+            log_payload["orchestrator_tool"] = orch_tool
+            log_payload["execution_mode"] = exec_mode
             log_payload["triggered_by"] = log_payload.get("triggered_by") or orchestrator_context.get("triggered_by")
+            log_payload["orchestrator_dag_id"] = orchestrator_context.get("orchestrator_dag_id") or log_payload.get("orchestrator_dag_id")
+            log_payload["orchestrator_task_id"] = orchestrator_context.get("orchestrator_task_id") or log_payload.get("orchestrator_task_id")
+            log_payload["orchestrator_run_id"] = orchestrator_context.get("orchestrator_run_id") or log_payload.get("orchestrator_run_id")
         else:
             log_payload = {
                 "pipeline_id":          job_id,
@@ -291,9 +297,9 @@ def dbt_webhook(user_id: str):
                 "rows_written":         rows_written,
                 "error_message":        json.dumps(result["errors"]) if result.get("errors") else None,
                 "raw_log":              result,
-                "execution_mode":       orchestrator_context.get("execution_mode") or ("orchestrated" if orchestrator_context.get("orchestrator_tool") else "native"),
+                "execution_mode":       exec_mode,
                 "triggered_by":         orchestrator_context.get("triggered_by"),
-                "orchestrator_tool":    orchestrator_context.get("orchestrator_tool") or pipeline.get("tool_type", "dbt"),
+                "orchestrator_tool":    orch_tool,
                 "orchestrator_dag_id":  orchestrator_context.get("orchestrator_dag_id"),
                 "orchestrator_task_id": orchestrator_context.get("orchestrator_task_id"),
                 "orchestrator_run_id":  orchestrator_context.get("orchestrator_run_id"),

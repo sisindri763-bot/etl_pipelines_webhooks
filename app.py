@@ -270,25 +270,34 @@ def dbt_webhook(user_id: str):
         rows_written = tgt_dict.get("row_count") if isinstance(tgt_dict, dict) else None
 
         log_val = result.get("log")
-        log_payload = log_val if isinstance(log_val, dict) else {
-            "pipeline_id":          job_id,
-            "pipeline_name":        None,
-            "status":               result["status"],
-            "start_time":           result["received_at"],
-            "end_time":             result["completed_at"],
-            "duration":             None,
-            "tool_name":            pipeline.get("tool_type", "dbt"),
-            "rows_read":            rows_read,
-            "rows_written":         rows_written,
-            "error_message":        json.dumps(result["errors"]) if result.get("errors") else None,
-            "raw_log":              result,
-            "execution_mode":       orchestrator_context.get("execution_mode") or ("orchestrated" if orchestrator_context.get("orchestrator_tool") else "native"),
-            "triggered_by":         orchestrator_context.get("triggered_by"),
-            "orchestrator_tool":    orchestrator_context.get("orchestrator_tool"),
-            "orchestrator_dag_id":  orchestrator_context.get("orchestrator_dag_id"),
-            "orchestrator_task_id": orchestrator_context.get("orchestrator_task_id"),
-            "orchestrator_run_id":  orchestrator_context.get("orchestrator_run_id"),
-        }
+        if isinstance(log_val, dict):
+            log_payload = dict(log_val)
+            log_payload["rows_read"] = rows_read
+            log_payload["rows_written"] = rows_written
+            log_payload["pipeline_name"] = log_payload.get("pipeline_name") or pipeline.get("target_config", {}).get("table") or job_id
+            log_payload["orchestrator_tool"] = log_payload.get("orchestrator_tool") or orchestrator_context.get("orchestrator_tool") or pipeline.get("tool_type", "dbt")
+            log_payload["execution_mode"] = log_payload.get("execution_mode") or orchestrator_context.get("execution_mode") or "native"
+            log_payload["triggered_by"] = log_payload.get("triggered_by") or orchestrator_context.get("triggered_by")
+        else:
+            log_payload = {
+                "pipeline_id":          job_id,
+                "pipeline_name":        pipeline.get("target_config", {}).get("table") or job_id,
+                "status":               result["status"],
+                "start_time":           result["received_at"],
+                "end_time":             result["completed_at"],
+                "duration":             None,
+                "tool_name":            pipeline.get("tool_type", "dbt"),
+                "rows_read":            rows_read,
+                "rows_written":         rows_written,
+                "error_message":        json.dumps(result["errors"]) if result.get("errors") else None,
+                "raw_log":              result,
+                "execution_mode":       orchestrator_context.get("execution_mode") or ("orchestrated" if orchestrator_context.get("orchestrator_tool") else "native"),
+                "triggered_by":         orchestrator_context.get("triggered_by"),
+                "orchestrator_tool":    orchestrator_context.get("orchestrator_tool") or pipeline.get("tool_type", "dbt"),
+                "orchestrator_dag_id":  orchestrator_context.get("orchestrator_dag_id"),
+                "orchestrator_task_id": orchestrator_context.get("orchestrator_task_id"),
+                "orchestrator_run_id":  orchestrator_context.get("orchestrator_run_id"),
+            }
 
         # Save to pipeline_runs table
         save_pipeline_run(correlation_id, log_payload)

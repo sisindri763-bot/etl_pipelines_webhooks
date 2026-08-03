@@ -98,10 +98,13 @@ class DbtCloudLogAdapter(LogAdapter):
         if status_str == "error":
             error_message = data.get("status_message") or "Run failed — check dbt Cloud for details"
 
+        job_obj = data.get("job") if isinstance(data.get("job"), dict) else {}
+        pipeline_name = job_obj.get("name") if isinstance(job_obj, dict) else None
+
         return {
             "id":                   str(uuid.uuid4()),
             "pipeline_id":          str(data.get("job_id", run_id)),
-            "pipeline_name":        data.get("job_definition", {}).get("name") if isinstance(data.get("job_definition"), dict) else None,
+            "pipeline_name":        pipeline_name,
             "status":               status_str,
             "start_time":           data.get("started_at"),
             "end_time":             data.get("finished_at"),

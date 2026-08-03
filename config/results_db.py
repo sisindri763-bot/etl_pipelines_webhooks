@@ -346,7 +346,7 @@ def save_pipeline_run(
 ) -> str:
     """Save execution run log to pipeline_runs table."""
     valid_uuid = _to_valid_uuid(run_id)
-    raw_log_str = json.dumps(log_data)
+    raw_log_str = json.dumps(log_data, default=str)
 
     start_time_val = _to_mysql_datetime(log_data.get("start_time")) if is_mysql() else log_data.get("start_time")
     end_time_val = _to_mysql_datetime(log_data.get("end_time")) if is_mysql() else log_data.get("end_time")

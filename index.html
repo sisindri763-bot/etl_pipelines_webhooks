@@ -3,99 +3,130 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pipeline Connector Hub — Enterprise Data Integration</title>
+  <title>DataBridge Hub — Enterprise Pipeline & Webhook Engine</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-dark: #07090e;
-      --bg-card: rgba(15, 22, 36, 0.85);
-      --bg-input: rgba(10, 14, 23, 0.7);
+      --bg-dark: #090d16;
+      --bg-card: rgba(17, 24, 39, 0.75);
+      --bg-card-hover: rgba(24, 34, 53, 0.85);
+      --bg-input: rgba(11, 15, 25, 0.8);
       --border: rgba(255, 255, 255, 0.08);
+      --border-light: rgba(255, 255, 255, 0.12);
       --border-focus: #6366f1;
-      --text-main: #f3f4f6;
+      --text-main: #f9fafb;
       --text-muted: #9ca3af;
       --accent-indigo: #6366f1;
-      --accent-purple: #a855f7;
+      --accent-purple: #8b5cf6;
       --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
       --success: #10b981;
       --danger: #ef4444;
       --warning: #f59e0b;
+      --card-radius: 16px;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-    
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+
     body {
       background-color: var(--bg-dark);
       color: var(--text-main);
       min-height: 100vh;
       background-image: 
-        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.15) 0px, transparent 50%),
-        radial-gradient(at 50% 50%, rgba(6, 182, 212, 0.08) 0px, transparent 50%);
-      padding: 2.5rem 2rem;
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.12) 0px, transparent 50%),
+        radial-gradient(at 50% 100%, rgba(6, 182, 212, 0.08) 0px, transparent 50%);
+      padding: 2rem;
     }
 
-    .container { max-width: 1400px; margin: 0 auto; }
-    
-    /* Header */
+    .container { max-width: 1440px; margin: 0 auto; }
+
+    /* Modern Navigation Header */
     header {
       display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border);
+      margin-bottom: 2rem; padding: 1.25rem 1.75rem;
+      background: var(--bg-card); backdrop-filter: blur(20px);
+      border: 1px solid var(--border); border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     }
-    .logo-container { display: flex; align-items: center; gap: 1.2rem; }
-    .logo-icon {
-      width: 52px; height: 52px; border-radius: 16px;
+    
+    .brand-container { display: flex; align-items: center; gap: 1rem; }
+    .brand-logo {
+      width: 44px; height: 44px; border-radius: 12px;
       background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple));
-      display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 800;
-      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
-      animation: pulse-glow 3s infinite alternate;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; font-weight: 800; color: white;
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
     }
-    @keyframes pulse-glow {
-      0% { box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4); }
-      100% { box-shadow: 0 12px 36px rgba(168, 85, 247, 0.6); }
+    .brand-title { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em; }
+    .brand-tag {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+      background: rgba(99, 102, 241, 0.18); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 0.2rem 0.55rem; border-radius: 6px; margin-left: 0.5rem; vertical-align: middle;
     }
-    h1 { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; }
-    .subtitle { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem; }
 
-    /* Top Right Badge — Clean Status Bar (No hardcoded IP string) */
-    .server-status-pill {
-      display: flex; align-items: center; gap: 0.75rem;
-      background: rgba(15, 22, 36, 0.9); padding: 0.6rem 1.2rem; border-radius: 30px;
-      border: 1px solid var(--border); font-size: 0.85rem; font-weight: 500;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    .system-status {
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .status-pill {
+      display: flex; align-items: center; gap: 0.6rem;
+      background: rgba(11, 15, 25, 0.6); padding: 0.5rem 1rem; border-radius: 30px;
+      border: 1px solid var(--border); font-size: 0.8rem; font-weight: 600; color: var(--text-muted);
     }
     .pulse-dot {
-      width: 10px; height: 10px; border-radius: 50%; background: #f59e0b;
-      box-shadow: 0 0 12px #f59e0b; transition: all 0.3s;
+      width: 8px; height: 8px; border-radius: 50%; background: var(--success);
+      box-shadow: 0 0 10px var(--success);
     }
-    .pulse-dot.online { background: var(--success); box-shadow: 0 0 14px var(--success); }
 
-    .layout-grid {
+    /* Stats Overview Cards */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--bg-card); backdrop-filter: blur(16px);
+      border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem 1.5rem;
+      display: flex; align-items: center; gap: 1.25rem; transition: transform 0.2s, border-color 0.2s;
+    }
+    .stat-card:hover { transform: translateY(-2px); border-color: var(--border-light); }
+    .stat-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; font-size: 1.3rem;
+    }
+    .stat-icon.blue { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
+    .stat-icon.emerald { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .stat-icon.purple { background: rgba(139, 92, 246, 0.15); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.3); }
+    .stat-val { font-size: 1.5rem; font-weight: 800; line-height: 1.2; }
+    .stat-label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* Main Grid Layout */
+    .main-grid {
       display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 2rem;
     }
-    @media (max-width: 1100px) { .layout-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 1100px) { .main-grid { grid-template-columns: 1fr; } }
 
-    .card {
+    /* Panels & Cards */
+    .panel {
       background: var(--bg-card); backdrop-filter: blur(20px);
       border: 1px solid var(--border); border-radius: 20px; padding: 2rem;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-      transition: border-color 0.3s;
     }
-    .card:hover { border-color: rgba(99, 102, 241, 0.3); }
-
-    .card-header {
+    .panel-header {
       display: flex; justify-content: space-between; align-items: center;
       margin-bottom: 1.75rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border);
     }
-    .card-title { font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 0.6rem; }
+    .panel-title { font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 0.6rem; }
 
+    /* Form Design */
     .form-group { margin-bottom: 1.25rem; }
-    .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+    .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
     
-    label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    label {
+      display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
+      margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.05em;
+    }
     
     input, select {
       width: 100%; padding: 0.85rem 1rem; background: var(--bg-input);
@@ -105,30 +136,38 @@
     input:focus, select:focus {
       border-color: var(--border-focus);
       box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+      background: rgba(11, 15, 25, 0.95);
     }
-    input::placeholder { color: rgba(156, 163, 175, 0.4); }
+    input::placeholder { color: rgba(156, 163, 175, 0.35); }
 
-    .connector-section {
-      background: rgba(10, 14, 23, 0.5); border: 1px solid var(--border);
+    /* Platform Config Section Box */
+    .config-box {
+      background: rgba(11, 15, 25, 0.5); border: 1px solid var(--border);
       border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; position: relative;
     }
-    .connector-tag {
+    .config-box-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;
+    }
+    .config-badge {
       display: inline-flex; align-items: center; gap: 0.4rem;
       font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
-      padding: 0.35rem 0.85rem; border-radius: 20px; margin-bottom: 1.25rem;
+      padding: 0.35rem 0.85rem; border-radius: 20px;
     }
-    .tag-source { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
-    .tag-target { background: rgba(6, 182, 212, 0.15); color: #38bdf8; border: 1px solid rgba(6, 182, 212, 0.3); }
-    .tag-tool { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .badge-tool { background: rgba(139, 92, 246, 0.15); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.3); }
+    .badge-src { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
+    .badge-tgt { background: rgba(6, 182, 212, 0.15); color: #38bdf8; border: 1px solid rgba(6, 182, 212, 0.3); }
 
+    /* Primary Submit Button */
     .btn-submit {
       width: 100%; padding: 1.1rem; border: none; border-radius: 14px;
       background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple));
       color: white; font-size: 1rem; font-weight: 700; cursor: pointer;
       box-shadow: 0 6px 24px rgba(99, 102, 241, 0.4); transition: all 0.25s;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
     }
     .btn-submit:hover { opacity: 0.95; transform: translateY(-2px); box-shadow: 0 8px 30px rgba(99, 102, 241, 0.6); }
 
+    /* Action Buttons */
     .btn-action {
       background: rgba(99, 102, 241, 0.18); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.4);
       padding: 0.5rem 1rem; border-radius: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
@@ -142,57 +181,54 @@
     }
     .btn-delete:hover { background: rgba(239, 68, 68, 0.3); color: white; }
 
-    /* Webhook URL Banner — Smooth Fade & Dismiss */
-    .webhook-box {
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 182, 212, 0.12));
+    /* Generated Webhook URL Modal Banner */
+    .webhook-banner {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 182, 212, 0.15));
       border: 1px solid rgba(16, 185, 129, 0.4);
-      border-radius: 16px; padding: 1.5rem; margin-bottom: 1.75rem;
+      border-radius: 16px; padding: 1.5rem; margin-bottom: 2rem;
       display: none; opacity: 0; transform: translateY(-10px);
       transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.15);
+      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.2);
     }
-    .webhook-box.show { display: block; opacity: 1; transform: translateY(0); }
-    .webhook-box.hide { opacity: 0; transform: translateY(-10px); }
-    
-    .webhook-box-header {
+    .webhook-banner.show { display: block; opacity: 1; transform: translateY(0); }
+    .webhook-banner.hide { opacity: 0; transform: translateY(-10px); }
+
+    .webhook-banner-head {
       display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;
     }
-    .webhook-box-title { font-size: 0.9rem; font-weight: 800; color: #34d399; text-transform: uppercase; letter-spacing: 0.04em; }
-    .btn-dismiss {
-      background: transparent; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; transition: color 0.2s;
-    }
-    .btn-dismiss:hover { color: white; }
+    .webhook-banner-title { font-size: 0.9rem; font-weight: 800; color: #34d399; text-transform: uppercase; letter-spacing: 0.05em; }
+    .btn-close { background: transparent; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; }
+    .btn-close:hover { color: white; }
 
-    .webhook-url-display {
+    .webhook-display {
       display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-      background: rgba(10, 14, 23, 0.8); padding: 0.85rem 1.2rem; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.3);
+      background: rgba(9, 13, 22, 0.85); padding: 0.9rem 1.25rem; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.3);
       margin-top: 0.75rem;
     }
-    .webhook-url-text { font-family: 'Fira Code', monospace; font-size: 0.9rem; color: #a7f3d0; word-break: break-all; }
+    .webhook-url-code { font-family: 'Fira Code', monospace; font-size: 0.9rem; color: #a7f3d0; word-break: break-all; }
 
+    /* Toast Notification */
     .toast {
-      padding: 1rem 1.25rem; border-radius: 14px; margin-bottom: 1.5rem; font-size: 0.9rem; font-weight: 500;
+      padding: 1rem 1.25rem; border-radius: 14px; margin-bottom: 1.5rem; font-size: 0.9rem; font-weight: 600;
       display: none; opacity: 0; transition: all 0.3s;
     }
     .toast.show { display: block; opacity: 1; }
     .toast-success { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #34d399; }
     .toast-error { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; }
 
+    /* Table Styling */
     table { width: 100%; border-collapse: separate; border-spacing: 0; }
     th { text-align: left; padding: 0.9rem 1rem; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border); }
     td { padding: 1.1rem 1rem; font-size: 0.875rem; border-bottom: 1px solid rgba(255, 255, 255, 0.04); vertical-align: middle; }
     tr:hover td { background: rgba(255, 255, 255, 0.03); }
 
-    .badge {
+    .tag-platform {
       display: inline-block; padding: 0.3rem 0.7rem; border-radius: 8px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
     }
-    .badge-sf { background: rgba(6, 182, 212, 0.15); color: #38bdf8; border: 1px solid rgba(6, 182, 212, 0.3); }
-    .badge-my { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-    .badge-dbt { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .tag-sf { background: rgba(6, 182, 212, 0.15); color: #38bdf8; border: 1px solid rgba(6, 182, 212, 0.3); }
+    .tag-my { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
 
     .empty-state { text-align: center; padding: 3.5rem 1rem; color: var(--text-muted); font-size: 0.9rem; }
-    
-    /* Spin animation for refresh button */
     .spin { animation: spin 0.8s ease-in-out; }
     @keyframes spin { 100% { transform: rotate(360deg); } }
   </style>
@@ -201,41 +237,68 @@
   <div class="container">
     <!-- Header -->
     <header>
-      <div class="logo-container">
-        <div class="logo-icon">⚡</div>
+      <div class="brand-container">
+        <div class="brand-logo">⚡</div>
         <div>
-          <h1>Pipeline Connector Hub</h1>
-          <div class="subtitle">AWS RDS MySQL Central Configuration & Webhook Engine</div>
+          <div class="brand-title">DataBridge Hub <span class="brand-tag">AWS RDS MySQL</span></div>
+          <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.15rem;">Central Pipeline Configuration & Webhook Engine</div>
         </div>
       </div>
       
-      <!-- Top Right Status Bar (Clean Badge - No hardcoded IP) -->
-      <div class="server-status-pill">
-        <div id="statusDot" class="pulse-dot online"></div>
-        <span id="statusText">AWS EC2 Server Online</span>
+      <div class="system-status">
+        <div class="status-pill">
+          <div class="pulse-dot"></div>
+          <span>AWS EC2 Server Active</span>
+        </div>
       </div>
     </header>
 
-    <div id="toastBox" class="toast"></div>
-
-    <!-- GENERATED WEBHOOK URL BANNER (Smooth Fade Out & Auto-Dismiss) -->
-    <div id="webhookBox" class="webhook-box">
-      <div class="webhook-box-header">
-        <div class="webhook-box-title">✓ Webhook Endpoint Generated Successfully</div>
-        <button class="btn-dismiss" onclick="dismissWebhookBox()" title="Close">✕</button>
+    <!-- Stats Overview Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon blue">🔌</div>
+        <div>
+          <div id="statPipelines" class="stat-val">0</div>
+          <div class="stat-label">Active Connectors</div>
+        </div>
       </div>
-      <div style="font-size: 0.85rem; color: var(--text-muted);">Copy this Webhook URL and paste it into your dbt Cloud Settings under <strong>Webhooks</strong>:</div>
-      <div class="webhook-url-display">
-        <span id="webhookUrlText" class="webhook-url-text"></span>
-        <button id="copyBtn" class="btn-action" onclick="copyWebhookUrl()">📋 Copy URL</button>
+      <div class="stat-card">
+        <div class="stat-icon emerald">🗄️</div>
+        <div>
+          <div class="stat-val">webhooks_db</div>
+          <div class="stat-label">Central Database</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon purple">🎯</div>
+        <div>
+          <div class="stat-val">dbt / Airflow</div>
+          <div class="stat-label">Webhook Adapters</div>
+        </div>
       </div>
     </div>
 
-    <div class="layout-grid">
-      <!-- REGISTER CONNECTOR CARD -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🔌 Register Pipeline Connector</div>
+    <div id="toastBox" class="toast"></div>
+
+    <!-- GENERATED WEBHOOK URL BANNER (Fades out when copied) -->
+    <div id="webhookBanner" class="webhook-banner">
+      <div class="webhook-banner-head">
+        <div class="webhook-banner-title">✓ Webhook Endpoint Generated & Saved to MySQL</div>
+        <button class="btn-close" onclick="dismissWebhookBanner()" title="Close">✕</button>
+      </div>
+      <div style="font-size: 0.85rem; color: var(--text-muted);">Copy this Webhook URL and paste it into your Orchestrator Settings (e.g. dbt Cloud Webhooks):</div>
+      <div class="webhook-display">
+        <span id="webhookUrlCode" class="webhook-url-code"></span>
+        <button id="copyBtn" class="btn-action" onclick="copyWebhookUrl()">📋 Copy Webhook URL</button>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="main-grid">
+      <!-- PANEL 1: REGISTER PIPELINE -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🔌 Register Pipeline Connector</div>
         </div>
 
         <form id="pipelineForm" onsubmit="submitPipeline(event)">
@@ -251,10 +314,12 @@
           </div>
 
           <!-- TOOL SECTION -->
-          <div class="connector-section">
-            <div class="connector-tag tag-tool">⚙️ Orchestrator Tool</div>
+          <div class="config-box">
+            <div class="config-box-header">
+              <span class="config-badge badge-tool">⚙️ Orchestrator Engine</span>
+            </div>
             <div class="form-group">
-              <label for="toolType">Select Tool Platform</label>
+              <label for="toolType">Select Platform</label>
               <select id="toolType" onchange="renderToolFields()">
                 <option value="dbt" selected>dbt Cloud</option>
                 <option value="airbyte">Airflow / Airbyte</option>
@@ -264,10 +329,12 @@
           </div>
 
           <!-- SOURCE SECTION -->
-          <div class="connector-section">
-            <div class="connector-tag tag-source">📥 Source Connector</div>
+          <div class="config-box">
+            <div class="config-box-header">
+              <span class="config-badge badge-src">📥 Source Data Connector</span>
+            </div>
             <div class="form-group">
-              <label for="sourceType">Select Source Platform</label>
+              <label for="sourceType">Select Platform</label>
               <select id="sourceType" onchange="renderSourceFields()">
                 <option value="snowflake" selected>Snowflake (Data Warehouse)</option>
                 <option value="mysql">MySQL Database</option>
@@ -278,10 +345,12 @@
           </div>
 
           <!-- TARGET SECTION -->
-          <div class="connector-section">
-            <div class="connector-tag tag-target">📤 Target Connector</div>
+          <div class="config-box">
+            <div class="config-box-header">
+              <span class="config-badge badge-tgt">📤 Target Data Connector</span>
+            </div>
             <div class="form-group">
-              <label for="targetType">Select Target Platform</label>
+              <label for="targetType">Select Platform</label>
               <select id="targetType" onchange="renderTargetFields()">
                 <option value="snowflake" selected>Snowflake (Data Warehouse)</option>
                 <option value="mysql">MySQL Database</option>
@@ -291,14 +360,14 @@
             <div id="targetFields"></div>
           </div>
 
-          <button type="submit" class="btn-submit">⚡ Save & Generate Webhook URL</button>
+          <button type="submit" class="btn-submit">⚡ Save Connector & Generate Webhook URL</button>
         </form>
       </div>
 
-      <!-- ACTIVE CONNECTORS CARD -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">📜 Active Connectors (AWS RDS MySQL)</div>
+      <!-- PANEL 2: ACTIVE CONNECTORS -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">📜 Active Connectors Console</div>
           <button id="refreshBtn" class="btn-action" onclick="fetchPipelines()">
             <span id="refreshIcon">🔄</span> Refresh
           </button>
@@ -316,7 +385,7 @@
             </thead>
             <tbody id="pipelineTableBody">
               <tr>
-                <td colspan="4" class="empty-state">Loading active connectors...</td>
+                <td colspan="4" class="empty-state">Loading active connectors from AWS RDS MySQL...</td>
               </tr>
             </tbody>
           </table>
@@ -326,7 +395,7 @@
   </div>
 
   <script>
-    // Get server base URL dynamically (works on local or EC2 without hardcoding)
+    // Get server base URL dynamically (no hardcoded IP strings)
     function getServerUrl() {
       return window.location.origin;
     }
@@ -340,17 +409,17 @@
       }, 5000);
     }
 
-    function dismissWebhookBox() {
-      const webhookBox = document.getElementById('webhookBox');
-      webhookBox.classList.remove('show');
-      webhookBox.classList.add('hide');
+    function dismissWebhookBanner() {
+      const banner = document.getElementById('webhookBanner');
+      banner.classList.remove('show');
+      banner.classList.add('hide');
       setTimeout(() => {
-        webhookBox.style.display = 'none';
-        webhookBox.classList.remove('hide');
+        banner.style.display = 'none';
+        banner.classList.remove('hide');
       }, 400);
     }
 
-    // Bulletproof Copy to Clipboard Function with Fallback
+    // Bulletproof Copy Function with Fallback
     function copyTextToClipboard(text) {
       if (navigator.clipboard && window.isSecureContext) {
         return navigator.clipboard.writeText(text);
@@ -375,9 +444,9 @@
       }
     }
 
-    // Copy Webhook URL & Auto-Disappear
+    // Copy Webhook URL & Smooth Disappear
     async function copyWebhookUrl() {
-      const urlText = document.getElementById('webhookUrlText').textContent;
+      const urlText = document.getElementById('webhookUrlCode').textContent;
       const copyBtn = document.getElementById('copyBtn');
 
       try {
@@ -389,20 +458,19 @@
         
         showToast('✓ Webhook URL copied to clipboard! Ready to paste into dbt Cloud.');
 
-        // Auto-dismiss banner after copying
         setTimeout(() => {
-          dismissWebhookBox();
-          copyBtn.innerHTML = '📋 Copy URL';
+          dismissWebhookBanner();
+          copyBtn.innerHTML = '📋 Copy Webhook URL';
           copyBtn.style.background = '';
           copyBtn.style.color = '';
           copyBtn.style.borderColor = '';
-        }, 1500);
+        }, 1200);
       } catch (err) {
         showToast('✕ Copy failed. Please select text manually.', false);
       }
     }
 
-    // Render Fields
+    /* Form Fields Renderers — ZERO Hardcoded User URLs */
     function renderToolFields() {
       const type = document.getElementById('toolType').value;
       const container = document.getElementById('toolFields');
@@ -412,10 +480,13 @@
             <div class="form-group"><label>dbt Account ID *</label><input type="text" id="dbt_account_id" placeholder="e.g. 70506183151322" required></div>
             <div class="form-group"><label>dbt API Token *</label><input type="password" id="dbt_api_token" placeholder="dbtc_aws..." required></div>
           </div>
-          <div class="form-group"><label>dbt Base URL</label><input type="text" id="dbt_base_url" placeholder="https://li589.us1.dbt.com" value="https://li589.us1.dbt.com"></div>
+          <div class="form-group">
+            <label>dbt Base URL</label>
+            <input type="text" id="dbt_base_url" placeholder="https://cloud.getdbt.com" value="">
+          </div>
         `;
       } else {
-        container.innerHTML = `<div class="form-group"><label>Airflow Webhook URL *</label><input type="text" id="af_url" placeholder="http://..." required></div>`;
+        container.innerHTML = `<div class="form-group"><label>Airflow Webhook URL *</label><input type="text" id="af_url" placeholder="e.g. http://airflow.example.com/api/v1/dags" required></div>`;
       }
     }
 
@@ -425,17 +496,17 @@
       if (type === 'snowflake') {
         container.innerHTML = `
           <div class="form-row">
-            <div class="form-group"><label>Account *</label><input type="text" id="src_sf_account" placeholder="e.g. jd97000.ap-southeast-7.aws" required></div>
-            <div class="form-group"><label>User *</label><input type="text" id="src_sf_user" placeholder="e.g. Sasi9392" required></div>
+            <div class="form-group"><label>Account *</label><input type="text" id="src_sf_account" placeholder="e.g. xy12345.ap-southeast-1.aws" required></div>
+            <div class="form-group"><label>User *</label><input type="text" id="src_sf_user" placeholder="e.g. db_user" required></div>
           </div>
           <div class="form-row">
             <div class="form-group"><label>Password *</label><input type="password" id="src_sf_pass" placeholder="••••••••••••" required></div>
             <div class="form-group"><label>Warehouse *</label><input type="text" id="src_sf_wh" placeholder="e.g. COMPUTE_WH" required></div>
           </div>
           <div class="form-row">
-            <div class="form-group"><label>Database *</label><input type="text" id="src_sf_db" placeholder="e.g. ANALYTICS_DB" required></div>
-            <div class="form-group"><label>Schema *</label><input type="text" id="src_sf_schema" placeholder="e.g. RAW" required></div>
-            <div class="form-group"><label>Table *</label><input type="text" id="src_sf_table" placeholder="e.g. STOCK_DATA_RAW" required></div>
+            <div class="form-group"><label>Database *</label><input type="text" id="src_sf_db" placeholder="e.g. RAW_DB" required></div>
+            <div class="form-group"><label>Schema *</label><input type="text" id="src_sf_schema" placeholder="e.g. PUBLIC" required></div>
+            <div class="form-group"><label>Table *</label><input type="text" id="src_sf_table" placeholder="e.g. RAW_ORDERS" required></div>
           </div>
         `;
       } else if (type === 'mysql') {
@@ -464,8 +535,8 @@
       if (type === 'snowflake') {
         container.innerHTML = `
           <div class="form-row">
-            <div class="form-group"><label>Account *</label><input type="text" id="tgt_sf_account" placeholder="e.g. jd97000.ap-southeast-7.aws" required></div>
-            <div class="form-group"><label>User *</label><input type="text" id="tgt_sf_user" placeholder="e.g. Sasi9392" required></div>
+            <div class="form-group"><label>Account *</label><input type="text" id="tgt_sf_account" placeholder="e.g. xy12345.ap-southeast-1.aws" required></div>
+            <div class="form-group"><label>User *</label><input type="text" id="tgt_sf_user" placeholder="e.g. db_user" required></div>
           </div>
           <div class="form-row">
             <div class="form-group"><label>Password *</label><input type="password" id="tgt_sf_pass" placeholder="••••••••••••" required></div>
@@ -473,8 +544,8 @@
           </div>
           <div class="form-row">
             <div class="form-group"><label>Database *</label><input type="text" id="tgt_sf_db" placeholder="e.g. ANALYTICS_DB" required></div>
-            <div class="form-group"><label>Schema *</label><input type="text" id="tgt_sf_schema" placeholder="e.g. STAGING_STAGING" required></div>
-            <div class="form-group"><label>Table *</label><input type="text" id="tgt_sf_table" placeholder="e.g. STG_STOCK_DATA" required></div>
+            <div class="form-group"><label>Schema *</label><input type="text" id="tgt_sf_schema" placeholder="e.g. STAGING" required></div>
+            <div class="form-group"><label>Table *</label><input type="text" id="tgt_sf_table" placeholder="e.g. STG_ORDERS" required></div>
           </div>
         `;
       } else if (type === 'mysql') {
@@ -586,16 +657,16 @@
           body: JSON.stringify(payload)
         });
         const data = await res.json();
-        const webhookBox = document.getElementById('webhookBox');
-        const webhookUrlText = document.getElementById('webhookUrlText');
+        const banner = document.getElementById('webhookBanner');
+        const codeText = document.getElementById('webhookUrlCode');
 
         if (res.ok) {
           showToast(`✓ Connector saved successfully to AWS RDS MySQL for Job ID: ${payload.job_id}`);
           
-          webhookUrlText.textContent = generatedUrl;
-          webhookBox.style.display = 'block';
+          codeText.textContent = generatedUrl;
+          banner.style.display = 'block';
           setTimeout(() => {
-            webhookBox.classList.add('show');
+            banner.classList.add('show');
           }, 10);
 
           document.getElementById('pipelineForm').reset();
@@ -611,7 +682,7 @@
       }
     }
 
-    // Active Connectors Refresh Function with Spinner
+    // Active Connectors Console Refresh
     async function fetchPipelines() {
       const refreshIcon = document.getElementById('refreshIcon');
       refreshIcon.classList.add('spin');
@@ -620,14 +691,17 @@
         const res = await fetch(`${getServerUrl()}/admin/list-configs`);
         const data = await res.json();
         const tbody = document.getElementById('pipelineTableBody');
+        const statPipelines = document.getElementById('statPipelines');
+
         if (data.pipelines && data.pipelines.length > 0) {
+          statPipelines.textContent = data.pipelines.length;
           tbody.innerHTML = data.pipelines.map(p => {
             const generatedUrl = p.webhook_url || `${getServerUrl()}/webhooks/${p.tool_type}/user123`;
             return `
               <tr>
                 <td><strong>${p.job_id}</strong></td>
-                <td><span class="badge badge-sf">${p.source_type}</span></td>
-                <td><span class="badge badge-my">${p.target_type}</span></td>
+                <td><span class="tag-platform tag-sf">${p.source_type}</span></td>
+                <td><span class="tag-platform tag-my">${p.target_type}</span></td>
                 <td>
                   <button class="btn-action" onclick="copyTextToClipboard('${generatedUrl}').then(() => showToast('✓ Webhook URL copied!'))">📋 Copy</button>
                   <button class="btn-delete" style="margin-left: 0.3rem;" onclick="deletePipeline('${p.job_id}')">Delete</button>
@@ -636,7 +710,8 @@
             `;
           }).join('');
         } else {
-          tbody.innerHTML = `<tr><td colspan="4" class="empty-state">No active connectors found in AWS RDS MySQL.</td></tr>`;
+          statPipelines.textContent = '0';
+          tbody.innerHTML = `<tr><td colspan="4" class="empty-state">No active connectors registered in AWS RDS MySQL.</td></tr>`;
         }
       } catch (err) {
         showToast(`✕ Error fetching active connectors: ${err.message}`, false);
@@ -652,7 +727,7 @@
       try {
         const res = await fetch(`${getServerUrl()}/admin/delete-config/${jobId}`, { method: 'DELETE' });
         if (res.ok) {
-          showToast(`✓ Pipeline '${jobId}' deleted from AWS RDS MySQL.`);
+          showToast(`✓ Connector '${jobId}' removed from AWS RDS MySQL.`);
           fetchPipelines();
         }
       } catch (err) {
@@ -660,7 +735,7 @@
       }
     }
 
-    // Initialize blank forms and load active pipelines
+    // Initialize blank forms and load active pipelines on startup
     renderToolFields();
     renderSourceFields();
     renderTargetFields();

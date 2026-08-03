@@ -64,6 +64,15 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
+@app.errorhandler(400)
+@app.errorhandler(401)
+@app.errorhandler(404)
+@app.errorhandler(500)
+def handle_json_error(e):
+    code = getattr(e, 'code', 500)
+    desc = getattr(e, 'description', str(e))
+    return jsonify({"status": "error", "code": code, "description": desc}), code
+
 @app.after_request
 def add_cors_headers(response):
     response.headers["Access-Control-Allow-Origin"] = "*"
@@ -100,9 +109,9 @@ def _verify_dbt_signature(payload_bytes: bytes, sig_header: str) -> bool:
 
 def _require_admin_token() -> None:
     """Abort with 401 if admin token is configured but not provided."""
-    token = os.getenv("ADMIN_TOKEN", "")
-    if not token:
-        return   # not configured — open access (fine for local dev)
+    token = os.getenv("ADMIN_TOKEN", "").strip()
+    if not token or token == "your_admin_secret_token":
+        return   # open access for dev / unconfigured token
 
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer ") or auth[7:] != token:

@@ -168,6 +168,7 @@ def register_pipeline(
     target_type: str,
     target_config: Dict[str, Any],
     tool_config: Optional[Dict[str, Any]] = None,
+    webhook_url: Optional[str] = None,
 ) -> None:
     """Upsert a pipeline configuration."""
     if is_mysql():
@@ -175,8 +176,8 @@ def register_pipeline(
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO pipelines
-                    (job_id, tool_type, source_type, source_config, target_type, target_config, tool_config)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    (job_id, tool_type, source_type, source_config, target_type, target_config, tool_config, webhook_url)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                     tool_type     = VALUES(tool_type),
                     source_type   = VALUES(source_type),
@@ -184,6 +185,7 @@ def register_pipeline(
                     target_type   = VALUES(target_type),
                     target_config = VALUES(target_config),
                     tool_config   = VALUES(tool_config),
+                    webhook_url   = VALUES(webhook_url),
                     updated_at    = CURRENT_TIMESTAMP
             """, (
                 str(job_id),
@@ -193,7 +195,9 @@ def register_pipeline(
                 target_type,
                 json.dumps(target_config),
                 json.dumps(tool_config or {}),
+                webhook_url,
             ))
+        conn.commit()
         conn.close()
     elif is_postgres():
         with _get_pg_conn() as conn:

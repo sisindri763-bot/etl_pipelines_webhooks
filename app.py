@@ -347,6 +347,8 @@ def admin_register_config():
     if missing:
         abort(400, description=f"Missing required fields: {missing}")
 
+    webhook_url = data.get("webhook_url") or f"{request.host_url.rstrip('/')}/webhooks/{data['tool_type']}/user123"
+    data["webhook_url"] = webhook_url
     register_pipeline(**data)
 
     return jsonify({

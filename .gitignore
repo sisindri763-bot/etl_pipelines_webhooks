@@ -1,0 +1,38 @@
+# .gitignore
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Secrets
+.env
+
+# Config DB (local SQLite)
+config/pipelines.db
+config/*.db
+
+# Result bundles (can be large — store externally in production)
+results/*/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

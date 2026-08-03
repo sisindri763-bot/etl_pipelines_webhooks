@@ -1,0 +1,22 @@
+# requirements.txt — webhook server dependencies
+#
+# Core
+flask>=3.0.0
+gunicorn>=21.2.0          # production WSGI server (used by Render)
+
+# Database client (Postgres / Supabase support)
+psycopg2-binary>=2.9.9
+
+# HTTP client (used by dbt/Airbyte log adapters, CSV/Excel URL loading, API adapters)
+requests>=2.31.0
+urllib3>=2.0.0
+
+# Retry logic (wraps every external call)
+tenacity>=8.2.0
+
+# Source / target data adapters
+pymysql>=1.1.0             # MySQL / MariaDB
+openpyxl>=3.1.0            # Excel adapter
+
+# Utilities
+python-dotenv>=1.0.0       # loads .env in local dev

@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any, Dict
 from dotenv import load_dotenv
 
-from flask import Flask, jsonify, request, abort
+from flask import Flask, jsonify, request, abort, send_file
 
 # ---------------------------------------------------------------------------
 # Bootstrap — must happen before adapter imports so the cwd is on sys.path
@@ -385,8 +385,13 @@ def admin_delete_config(job_id: str):
 
 
 # ---------------------------------------------------------------------------
-# Health check
+# Health & Dashboard UI routes
 # ---------------------------------------------------------------------------
+
+@app.route("/", methods=["GET"])
+def serve_dashboard():
+    return send_file(Path(__file__).parent / "index.html")
+
 
 @app.route("/health", methods=["GET"])
 def health():

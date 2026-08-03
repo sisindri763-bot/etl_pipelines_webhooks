@@ -130,6 +130,7 @@ CREATE TABLE IF NOT EXISTS source_asset_metadata (
     row_count BIGINT,
     column_count INT,
     size_bytes BIGINT,
+    column_names JSON,
     last_updated_at DATETIME NULL,
     observed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_source_run_id FOREIGN KEY (run_id) REFERENCES pipeline_runs(id) ON DELETE CASCADE
@@ -147,6 +148,7 @@ CREATE TABLE IF NOT EXISTS target_asset_metadata (
     row_count BIGINT,
     column_count INT,
     size_bytes BIGINT,
+    column_names JSON,
     last_updated_at DATETIME NULL,
     observed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_target_run_id FOREIGN KEY (run_id) REFERENCES pipeline_runs(id) ON DELETE CASCADE

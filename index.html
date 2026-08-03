@@ -114,11 +114,28 @@
     }
     .btn-submit:hover { opacity: 0.94; transform: translateY(-2px); box-shadow: 0 6px 24px rgba(99, 102, 241, 0.5); }
 
+    .btn-copy {
+      background: rgba(99, 102, 241, 0.2); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.4);
+      padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-copy:hover { background: rgba(99, 102, 241, 0.4); color: white; }
+
     .btn-delete {
       background: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.25);
       padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: all 0.2s;
     }
     .btn-delete:hover { background: rgba(239, 68, 68, 0.25); }
+
+    .webhook-box {
+      background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 14px; padding: 1.25rem; margin-bottom: 1.5rem; display: none;
+    }
+    .webhook-box-title { font-size: 0.85rem; font-weight: 700; color: #34d399; text-transform: uppercase; margin-bottom: 0.5rem; }
+    .webhook-url-display {
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      background: rgba(10, 14, 23, 0.6); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+    .webhook-url-text { font-family: monospace; font-size: 0.85rem; color: #a7f3d0; word-break: break-all; }
 
     .toast {
       padding: 1rem 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; font-size: 0.9rem; display: none;
@@ -159,6 +176,16 @@
 
     <div id="toastBox" class="toast"></div>
 
+    <!-- GENERATED WEBHOOK URL BOX -->
+    <div id="webhookBox" class="webhook-box">
+      <div class="webhook-box-title">✓ Webhook Endpoint Generated Successfully</div>
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">Copy this Webhook URL and paste it into your dbt Cloud Settings under <strong>Webhooks</strong>:</div>
+      <div class="webhook-url-display">
+        <span id="webhookUrlText" class="webhook-url-text"></span>
+        <button class="btn-copy" onclick="copyWebhookUrl()">📋 Copy URL</button>
+      </div>
+    </div>
+
     <div class="layout-grid">
       <!-- REGISTER CONNECTOR CARD -->
       <div class="card">
@@ -171,6 +198,10 @@
             <div class="form-group">
               <label for="jobId">Job / Pipeline ID *</label>
               <input type="text" id="jobId" placeholder="e.g. 70506183135814" required>
+            </div>
+            <div class="form-group">
+              <label for="userTenantId">User / Tenant ID *</label>
+              <input type="text" id="userTenantId" placeholder="e.g. user123 or company_a" value="user123" required>
             </div>
             <div class="form-group">
               <label for="toolType">Orchestrator Tool *</label>
@@ -219,7 +250,7 @@
             <div id="targetFields"></div>
           </div>
 
-          <button type="submit" class="btn-submit">⚡ Save & Register Credentials to AWS RDS MySQL</button>
+          <button type="submit" class="btn-submit">⚡ Save & Generate Webhook URL</button>
         </form>
       </div>
 
@@ -237,11 +268,12 @@
                 <th>Job ID</th>
                 <th>Source</th>
                 <th>Target</th>
+                <th>Webhook URL</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody id="pipelineTableBody">
-              <tr><td colspan="4" class="empty-state">No active connectors found in AWS RDS MySQL.</td></tr>
+              <tr><td colspan="5" class="empty-state">No active connectors found in AWS RDS MySQL.</td></tr>
             </tbody>
           </table>
         </div>
@@ -434,9 +466,13 @@
 
     async function submitPipeline(e) {
       e.preventDefault();
+      const userTenant = document.getElementById('userTenantId').value || 'user123';
+      const tool = document.getElementById('toolType').value;
+      const generatedUrl = `${getServerUrl()}/webhooks/${tool}/${userTenant}`;
+
       const payload = {
         job_id: document.getElementById('jobId').value,
-        tool_type: document.getElementById('toolType').value,
+        tool_type: tool,
         tool_config: buildToolConfig(),
         source_type: document.getElementById('sourceType').value,
         source_config: buildSourceConfig(),
@@ -452,16 +488,24 @@
         });
         const data = await res.json();
         const toast = document.getElementById('toastBox');
-        toast.style.display = 'block';
+        const webhookBox = document.getElementById('webhookBox');
+        const webhookUrlText = document.getElementById('webhookUrlText');
+
         if (res.ok) {
+          toast.style.display = 'block';
           toast.className = 'toast toast-success';
-          toast.textContent = `✓ Connector & dbt Credentials saved successfully to AWS RDS MySQL for Job ID: ${payload.job_id}`;
+          toast.textContent = `✓ Connector saved successfully to AWS RDS MySQL for Job ID: ${payload.job_id}`;
+          
+          webhookBox.style.display = 'block';
+          webhookUrlText.textContent = generatedUrl;
+
           document.getElementById('pipelineForm').reset();
           renderToolFields();
           renderSourceFields();
           renderTargetFields();
           fetchPipelines();
         } else {
+          toast.style.display = 'block';
           toast.className = 'toast toast-error';
           toast.textContent = `✕ Registration Failed: ${data.description || data.message || 'Error saving to database'}`;
         }
@@ -473,22 +517,37 @@
       }
     }
 
+    function copyWebhookUrl() {
+      const urlText = document.getElementById('webhookUrlText').textContent;
+      navigator.clipboard.writeText(urlText);
+      alert(`Copied to clipboard!\n${urlText}`);
+    }
+
+    function copyUrl(url) {
+      navigator.clipboard.writeText(url);
+      alert(`Copied to clipboard!\n${url}`);
+    }
+
     async function fetchPipelines() {
       try {
         const res = await fetch(`${getServerUrl()}/admin/list-configs`);
         const data = await res.json();
         const tbody = document.getElementById('pipelineTableBody');
         if (data.pipelines && data.pipelines.length > 0) {
-          tbody.innerHTML = data.pipelines.map(p => `
-            <tr>
-              <td><strong>${p.job_id}</strong></td>
-              <td><span class="badge badge-sf">${p.source_type}</span></td>
-              <td><span class="badge badge-my">${p.target_type}</span></td>
-              <td><button class="btn-delete" onclick="deletePipeline('${p.job_id}')">Delete</button></td>
-            </tr>
-          `).join('');
+          tbody.innerHTML = data.pipelines.map(p => {
+            const generatedUrl = `${getServerUrl()}/webhooks/${p.tool_type}/user123`;
+            return `
+              <tr>
+                <td><strong>${p.job_id}</strong></td>
+                <td><span class="badge badge-sf">${p.source_type}</span></td>
+                <td><span class="badge badge-my">${p.target_type}</span></td>
+                <td><button class="btn-copy" onclick="copyUrl('${generatedUrl}')">📋 Copy Webhook</button></td>
+                <td><button class="btn-delete" onclick="deletePipeline('${p.job_id}')">Delete</button></td>
+              </tr>
+            `;
+          }).join('');
         } else {
-          tbody.innerHTML = `<tr><td colspan="4" class="empty-state">No active connectors found in AWS RDS MySQL.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No active connectors found in AWS RDS MySQL.</td></tr>`;
         }
       } catch (err) {
         console.error(err);

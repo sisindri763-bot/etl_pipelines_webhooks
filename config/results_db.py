@@ -329,6 +329,17 @@ def _parse_duration_seconds(val: Any) -> Optional[int]:
         return None
 
 
+def _to_mysql_datetime(val: Any) -> Optional[str]:
+    if not val:
+        return None
+    val_str = str(val).replace("T", " ").split("+")[0].split(".")[0].strip()
+    if "-" in val_str and len(val_str) > 19:
+        val_str = val_str[:19]
+    if len(val_str) >= 19:
+        return val_str[:19]
+    return None
+
+
 def save_pipeline_run(
     run_id: str,
     log_data: Dict[str, Any],
@@ -337,13 +348,16 @@ def save_pipeline_run(
     valid_uuid = _to_valid_uuid(run_id)
     raw_log_str = json.dumps(log_data)
 
+    start_time_val = _to_mysql_datetime(log_data.get("start_time")) if is_mysql() else log_data.get("start_time")
+    end_time_val = _to_mysql_datetime(log_data.get("end_time")) if is_mysql() else log_data.get("end_time")
+
     params = (
         valid_uuid,
         str(log_data.get("pipeline_id") or log_data.get("job_id") or "unknown"),
         log_data.get("pipeline_name"),
         log_data.get("status", "unknown"),
-        log_data.get("start_time"),
-        log_data.get("end_time"),
+        start_time_val,
+        end_time_val,
         _parse_duration_seconds(log_data.get("duration")),
         log_data.get("tool_name", "dbt"),
         int(log_data["rows_read"]) if log_data.get("rows_read") is not None else None,
@@ -463,6 +477,8 @@ def save_source_asset_metadata(
     cols_val = source_data.get("columns") or source_data.get("column_names")
     col_names_str = json.dumps(cols_val) if isinstance(cols_val, (list, tuple)) else (cols_val if isinstance(cols_val, str) else None)
 
+    last_updated_val = _to_mysql_datetime(source_data.get("last_updated_at")) if is_mysql() else source_data.get("last_updated_at")
+
     params = (
         meta_id,
         run_uuid,
@@ -476,7 +492,7 @@ def save_source_asset_metadata(
         int(source_data["column_count"]) if source_data.get("column_count") is not None else None,
         int(source_data["size_bytes"]) if source_data.get("size_bytes") is not None else None,
         col_names_str,
-        source_data.get("last_updated_at"),
+        last_updated_val,
     )
 
     if is_mysql():
@@ -561,6 +577,8 @@ def save_target_asset_metadata(
     cols_val = target_data.get("columns") or target_data.get("column_names")
     col_names_str = json.dumps(cols_val) if isinstance(cols_val, (list, tuple)) else (cols_val if isinstance(cols_val, str) else None)
 
+    last_updated_val = _to_mysql_datetime(target_data.get("last_updated_at")) if is_mysql() else target_data.get("last_updated_at")
+
     params = (
         meta_id,
         run_uuid,
@@ -574,7 +592,7 @@ def save_target_asset_metadata(
         int(target_data["column_count"]) if target_data.get("column_count") is not None else None,
         int(target_data["size_bytes"]) if target_data.get("size_bytes") is not None else None,
         col_names_str,
-        target_data.get("last_updated_at"),
+        last_updated_val,
     )
 
     if is_mysql():

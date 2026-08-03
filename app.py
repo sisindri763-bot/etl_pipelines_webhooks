@@ -99,9 +99,9 @@ def _verify_dbt_signature(payload_bytes: bytes, sig_header: str) -> bool:
     Verify the dbt Cloud HMAC-SHA256 webhook signature.
     Skipped if WEBHOOK_SECRET is not set (useful for local dev).
     """
-    secret = os.getenv("WEBHOOK_SECRET", "")
-    if not secret:
-        return True   # not configured — skip verification
+    secret = os.getenv("WEBHOOK_SECRET", "").strip()
+    if not secret or secret == "your_dbt_cloud_webhook_secret":
+        return True   # not configured or default example secret — skip verification
 
     expected = hmac.new(secret.encode(), payload_bytes, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, sig_header or "")

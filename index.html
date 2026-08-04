@@ -3,18 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DataBridge Hub — Enterprise Pipeline Observability & Webhook Engine</title>
+  <title>DataBridge — Enterprise Pipeline Observability & Webhook Engine</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-dark: #070a12;
-      --bg-card: rgba(15, 23, 42, 0.85);
-      --bg-card-hover: rgba(22, 32, 56, 0.9);
-      --bg-input: rgba(10, 15, 29, 0.9);
+      --bg-dark: #0b0f19;
+      --bg-card: rgba(17, 24, 39, 0.85);
+      --bg-input: rgba(11, 15, 25, 0.75);
       --border: rgba(255, 255, 255, 0.08);
-      --border-accent: rgba(99, 102, 241, 0.3);
+      --border-accent: rgba(99, 102, 241, 0.35);
       --border-focus: #6366f1;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
@@ -33,18 +32,18 @@
       color: var(--text-main);
       min-height: 100vh;
       background-image: 
-        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
-        radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.12) 0px, transparent 50%),
-        radial-gradient(at 50% 100%, rgba(6, 182, 212, 0.08) 0px, transparent 50%);
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.1) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.1) 0px, transparent 50%),
+        radial-gradient(at 50% 100%, rgba(6, 182, 212, 0.06) 0px, transparent 50%);
       padding: 1.5rem 2rem;
     }
 
-    .container { max-width: 1600px; margin: 0 auto; }
+    .container { max-width: 1440px; margin: 0 auto; }
 
-    /* Compact Header Bar */
+    /* Clean Navigation Header */
     header {
       display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 1.25rem; padding: 1rem 1.5rem;
+      margin-bottom: 1.5rem; padding: 1.1rem 1.6rem;
       background: var(--bg-card); backdrop-filter: blur(20px);
       border: 1px solid var(--border); border-radius: 16px;
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
@@ -52,60 +51,59 @@
     
     .brand-container { display: flex; align-items: center; gap: 0.85rem; }
     .brand-logo {
-      width: 40px; height: 40px; border-radius: 10px;
+      width: 42px; height: 42px; border-radius: 12px;
       background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple));
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.25rem; font-weight: 800; color: white;
+      font-size: 1.3rem; font-weight: 800; color: white;
       box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
     }
-    .brand-title { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
+    .brand-title { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em; }
     .brand-tag {
       font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
       background: rgba(99, 102, 241, 0.18); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.3);
-      padding: 0.15rem 0.5rem; border-radius: 6px; margin-left: 0.4rem; vertical-align: middle;
+      padding: 0.2rem 0.55rem; border-radius: 6px; margin-left: 0.4rem; vertical-align: middle;
     }
 
     .system-status { display: flex; align-items: center; gap: 0.75rem; }
     .status-pill {
       display: flex; align-items: center; gap: 0.5rem;
-      background: rgba(10, 15, 29, 0.7); padding: 0.4rem 0.85rem; border-radius: 20px;
-      border: 1px solid var(--border); font-size: 0.78rem; font-weight: 600; color: var(--text-muted);
+      background: rgba(10, 15, 29, 0.7); padding: 0.45rem 0.9rem; border-radius: 20px;
+      border: 1px solid var(--border); font-size: 0.8rem; font-weight: 600; color: var(--text-muted);
     }
     .pulse-dot {
       width: 8px; height: 8px; border-radius: 50%; background: var(--success);
       box-shadow: 0 0 10px var(--success);
     }
 
-    /* Top Stats Grid — 4 Columns */
+    /* Top Stats Bar */
     .stats-grid {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
-      margin-bottom: 1.25rem;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem;
+      margin-bottom: 1.5rem;
     }
-    @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 900px) { .stats-grid { grid-template-columns: 1fr; } }
 
     .stat-card {
       background: var(--bg-card); backdrop-filter: blur(16px);
-      border: 1px solid var(--border); border-radius: 14px; padding: 1rem 1.25rem;
-      display: flex; align-items: center; gap: 1rem; transition: transform 0.2s, border-color 0.2s;
+      border: 1px solid var(--border); border-radius: 14px; padding: 1.1rem 1.4rem;
+      display: flex; align-items: center; gap: 1.1rem; transition: transform 0.2s, border-color 0.2s;
     }
     .stat-card:hover { transform: translateY(-2px); border-color: var(--border-accent); }
     .stat-icon {
-      width: 42px; height: 42px; border-radius: 10px;
-      display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0;
     }
     .stat-icon.indigo { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
     .stat-icon.emerald { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
     .stat-icon.purple { background: rgba(139, 92, 246, 0.15); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.3); }
-    .stat-icon.cyan { background: rgba(6, 182, 212, 0.15); color: #38bdf8; border: 1px solid rgba(6, 182, 212, 0.3); }
-    
-    .stat-val { font-size: 1.25rem; font-weight: 800; line-height: 1.2; }
-    .stat-label { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 
-    /* Webhook Banner */
+    .stat-val { font-size: 1.35rem; font-weight: 800; line-height: 1.2; }
+    .stat-label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* Generated Webhook URL Banner */
     .webhook-banner {
       background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 182, 212, 0.15));
       border: 1px solid rgba(16, 185, 129, 0.4);
-      border-radius: 14px; padding: 1.25rem; margin-bottom: 1.25rem;
+      border-radius: 14px; padding: 1.25rem; margin-bottom: 1.5rem;
       display: none; opacity: 0; transform: translateY(-10px);
       transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
       box-shadow: 0 10px 30px rgba(16, 185, 129, 0.15);
@@ -120,24 +118,31 @@
 
     .webhook-display {
       display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-      background: rgba(7, 10, 18, 0.9); padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid rgba(16, 185, 129, 0.3);
+      background: rgba(7, 10, 18, 0.9); padding: 0.8rem 1.1rem; border-radius: 10px; border: 1px solid rgba(16, 185, 129, 0.3);
       margin-top: 0.5rem;
     }
     .webhook-url-code { font-family: 'Fira Code', monospace; font-size: 0.85rem; color: #a7f3d0; word-break: break-all; }
 
+    /* Toast Notification */
     .toast {
-      padding: 0.85rem 1.15rem; border-radius: 12px; margin-bottom: 1.25rem; font-size: 0.85rem; font-weight: 600;
+      padding: 0.9rem 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; font-size: 0.88rem; font-weight: 600;
       display: none; opacity: 0; transition: all 0.3s;
     }
     .toast.show { display: block; opacity: 1; }
     .toast-success { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #34d399; }
     .toast-error { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; }
 
-    /* Compact 3-Column Connector Builder (Zero Vertical Scrolling!) */
+    /* Main 2-Column Grid Layout */
+    .layout-grid {
+      display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 1.5rem; align-items: start;
+    }
+    @media (max-width: 1100px) { .layout-grid { grid-template-columns: 1fr; } }
+
+    /* Ergonomic Card Panels */
     .panel {
       background: var(--bg-card); backdrop-filter: blur(20px);
       border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem;
-      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3); margin-bottom: 1.5rem;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
     }
     .panel-header {
       display: flex; justify-content: space-between; align-items: center;
@@ -145,43 +150,28 @@
     }
     .panel-title { font-size: 1.1rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; }
 
-    /* 3-Column Side-by-Side Horizontal Layout for Builder */
-    .builder-grid {
-      display: grid; grid-template-columns: 1fr 1.1fr 1.1fr; gap: 1.25rem;
+    /* Form Section Fieldsets */
+    .form-fieldset {
+      background: rgba(10, 15, 29, 0.5); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.15rem; margin-bottom: 1.15rem;
     }
-    @media (max-width: 1200px) { .builder-grid { grid-template-columns: 1fr; } }
-
-    .config-col {
-      background: rgba(10, 15, 29, 0.6); border: 1px solid var(--border);
-      border-radius: 14px; padding: 1.15rem; display: flex; flex-direction: column; justify-content: space-between;
+    .fieldset-title {
+      font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+      color: #a5b4fc; margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.4rem;
     }
-
-    .col-header {
-      display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;
-      padding-bottom: 0.6rem; border-bottom: 1px solid var(--border);
-    }
-    .col-tag {
-      display: inline-flex; align-items: center; gap: 0.35rem;
-      font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
-      padding: 0.25rem 0.65rem; border-radius: 8px;
-    }
-    .tag-tool { background: rgba(139, 92, 246, 0.15); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.3); }
-    .tag-src { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
-    .tag-tgt { background: rgba(6, 182, 212, 0.15); color: #38bdf8; border: 1px solid rgba(6, 182, 212, 0.3); }
 
     .form-group { margin-bottom: 0.85rem; }
-    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; }
-    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; }
+    .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.75rem; }
     
     label {
-      display: block; font-size: 0.7rem; font-weight: 700; color: var(--text-muted);
+      display: block; font-size: 0.72rem; font-weight: 700; color: var(--text-muted);
       margin-bottom: 0.3rem; text-transform: uppercase; letter-spacing: 0.04em;
     }
     
     input, select {
-      width: 100%; padding: 0.65rem 0.85rem; background: var(--bg-input);
+      width: 100%; padding: 0.7rem 0.9rem; background: var(--bg-input);
       border: 1px solid var(--border); border-radius: 10px; color: var(--text-main);
-      font-size: 0.82rem; transition: all 0.2s; outline: none;
+      font-size: 0.85rem; transition: all 0.2s; outline: none;
     }
     input:focus, select:focus {
       border-color: var(--border-focus);
@@ -189,15 +179,17 @@
     }
     input::placeholder { color: rgba(148, 163, 184, 0.35); }
 
+    /* Primary Submit Button */
     .btn-submit {
-      width: 100%; padding: 0.95rem; border: none; border-radius: 12px;
+      width: 100%; padding: 1rem; border: none; border-radius: 12px;
       background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple));
       color: white; font-size: 0.95rem; font-weight: 800; cursor: pointer;
-      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4); transition: all 0.25s; margin-top: 1.25rem;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4); transition: all 0.25s; margin-top: 0.5rem;
       display: flex; align-items: center; justify-content: center; gap: 0.5rem;
     }
     .btn-submit:hover { opacity: 0.95; transform: translateY(-2px); box-shadow: 0 6px 24px rgba(99, 102, 241, 0.6); }
 
+    /* Action Buttons */
     .btn-action {
       background: rgba(99, 102, 241, 0.18); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.4);
       padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
@@ -211,10 +203,10 @@
     }
     .btn-delete:hover { background: rgba(239, 68, 68, 0.3); color: white; }
 
-    /* Active Connectors Console Table */
+    /* Table Styling */
     table { width: 100%; border-collapse: separate; border-spacing: 0; }
-    th { text-align: left; padding: 0.75rem 1rem; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border); }
-    td { padding: 0.85rem 1rem; font-size: 0.85rem; border-bottom: 1px solid rgba(255, 255, 255, 0.04); vertical-align: middle; }
+    th { text-align: left; padding: 0.8rem 0.9rem; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+    td { padding: 0.9rem 0.9rem; font-size: 0.85rem; border-bottom: 1px solid rgba(255, 255, 255, 0.04); vertical-align: middle; }
     tr:hover td { background: rgba(255, 255, 255, 0.03); }
 
     .tag-platform {
@@ -222,10 +214,9 @@
     }
     .tag-sf { background: rgba(6, 182, 212, 0.15); color: #38bdf8; border: 1px solid rgba(6, 182, 212, 0.3); }
     .tag-my { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-    .tag-pg { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.3); }
     .tag-file { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
 
-    .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); font-size: 0.85rem; }
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); font-size: 0.85rem; }
     .spin { animation: spin 0.8s ease-in-out; }
     @keyframes spin { 100% { transform: rotate(360deg); } }
   </style>
@@ -245,12 +236,12 @@
       <div class="system-status">
         <div class="status-pill">
           <div class="pulse-dot"></div>
-          <span>AWS EC2 Live</span>
+          <span>AWS EC2 Online</span>
         </div>
       </div>
     </header>
 
-    <!-- Dynamic Stats Grid (4 Columns) -->
+    <!-- Top Stats Bar -->
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-icon indigo">🔌</div>
@@ -260,24 +251,17 @@
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon purple">⚙️</div>
+        <div class="stat-icon emerald">🗄️</div>
         <div>
-          <div id="statLogAdapters" class="stat-val">...</div>
-          <div class="stat-label">Log Adapters</div>
+          <div class="stat-val">AWS RDS MySQL</div>
+          <div class="stat-label">Central Config Storage</div>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon cyan">📥</div>
+        <div class="stat-icon purple">🛡️</div>
         <div>
-          <div id="statSourceAdapters" class="stat-val">...</div>
-          <div class="stat-label">Source Adapters</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon emerald">📤</div>
-        <div>
-          <div id="statTargetAdapters" class="stat-val">...</div>
-          <div class="stat-label">Target Adapters</div>
+          <div class="stat-val">dbt / Airflow</div>
+          <div class="stat-label">Webhook Adapters</div>
         </div>
       </div>
     </div>
@@ -290,114 +274,115 @@
         <div class="webhook-banner-title">✓ Webhook Endpoint Generated & Saved to MySQL</div>
         <button class="btn-close" onclick="dismissWebhookBanner()" title="Close">✕</button>
       </div>
-      <div style="font-size: 0.82rem; color: var(--text-muted);">Copy this Webhook URL and paste it into your Orchestrator Settings (e.g. dbt Cloud Webhooks):</div>
+      <div style="font-size: 0.82rem; color: var(--text-muted);">Copy this Webhook URL and paste it into your dbt Cloud Settings under <strong>Webhooks</strong>:</div>
       <div class="webhook-display">
         <span id="webhookUrlCode" class="webhook-url-code"></span>
         <button id="copyBtn" class="btn-action" onclick="copyWebhookUrl()">📋 Copy Webhook URL</button>
       </div>
     </div>
 
-    <!-- COMPACT SIDE-BY-SIDE BUILDER PANEL (Zero Vertical Scrolling!) -->
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">🔌 Pipeline Connector Builder</div>
-      </div>
-
-      <form id="pipelineForm" onsubmit="submitPipeline(event)">
-        <div class="builder-grid">
-          
-          <!-- COL 1: PIPELINE & ORCHESTRATOR -->
-          <div class="config-col">
-            <div>
-              <div class="col-header">
-                <span class="col-tag tag-tool">⚙️ 1. Orchestrator</span>
-              </div>
-              <div class="form-row-2">
-                <div class="form-group">
-                  <label for="jobId">Job / Pipeline ID *</label>
-                  <input type="text" id="jobId" placeholder="e.g. 70506183135814" required>
-                </div>
-                <div class="form-group">
-                  <label for="userTenantId">User / Tenant ID *</label>
-                  <input type="text" id="userTenantId" placeholder="e.g. user123" value="user123" required>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="toolType">Orchestrator Platform *</label>
-                <select id="toolType" onchange="renderToolFields()"></select>
-              </div>
-              <div id="toolFields"></div>
-            </div>
-          </div>
-
-          <!-- COL 2: SOURCE CONNECTOR -->
-          <div class="config-col">
-            <div>
-              <div class="col-header">
-                <span class="col-tag tag-src">📥 2. Source Connector</span>
-              </div>
-              <div class="form-group">
-                <label for="sourceType">Source Platform *</label>
-                <select id="sourceType" onchange="renderSourceFields()"></select>
-              </div>
-              <div id="sourceFields"></div>
-            </div>
-          </div>
-
-          <!-- COL 3: TARGET CONNECTOR -->
-          <div class="config-col">
-            <div>
-              <div class="col-header">
-                <span class="col-tag tag-tgt">📤 3. Target Connector</span>
-              </div>
-              <div class="form-group">
-                <label for="targetType">Target Platform *</label>
-                <select id="targetType" onchange="renderTargetFields()"></select>
-              </div>
-              <div id="targetFields"></div>
-            </div>
-          </div>
-
+    <!-- Main Grid Layout -->
+    <div class="layout-grid">
+      
+      <!-- LEFT PANEL: REGISTER PIPELINE CONNECTOR -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🔌 Register Pipeline Connector</div>
         </div>
 
-        <button type="submit" class="btn-submit">⚡ Save Connector & Generate Webhook URL</button>
-      </form>
-    </div>
+        <form id="pipelineForm" onsubmit="submitPipeline(event)">
+          <!-- General Pipeline Info -->
+          <div class="form-fieldset">
+            <div class="fieldset-title">📌 Pipeline Identifiers</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="jobId">Job / Pipeline ID *</label>
+                <input type="text" id="jobId" placeholder="e.g. 70506183135814" required>
+              </div>
+              <div class="form-group">
+                <label for="userTenantId">User / Tenant ID *</label>
+                <input type="text" id="userTenantId" placeholder="e.g. user123" value="user123" required>
+              </div>
+            </div>
+          </div>
 
-    <!-- PANEL 2: ACTIVE CONNECTORS CONSOLE -->
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">📜 Active Connectors Console (AWS RDS MySQL)</div>
-        <button id="refreshBtn" class="btn-action" onclick="fetchPipelines()">
-          <span id="refreshIcon">🔄</span> Refresh List
-        </button>
+          <!-- Orchestrator Engine -->
+          <div class="form-fieldset">
+            <div class="fieldset-title">⚙️ Orchestrator Tool</div>
+            <div class="form-group">
+              <label for="toolType">Select Platform *</label>
+              <select id="toolType" onchange="renderToolFields()">
+                <option value="dbt" selected>dbt Cloud</option>
+                <option value="airbyte">Airflow / Airbyte</option>
+              </select>
+            </div>
+            <div id="toolFields"></div>
+          </div>
+
+          <!-- Source Data Connector -->
+          <div class="form-fieldset">
+            <div class="fieldset-title">📥 Source Data Connector</div>
+            <div class="form-group">
+              <label for="sourceType">Select Platform *</label>
+              <select id="sourceType" onchange="renderSourceFields()">
+                <option value="snowflake" selected>Snowflake (Data Warehouse)</option>
+                <option value="mysql">MySQL Database</option>
+                <option value="csv">CSV File</option>
+              </select>
+            </div>
+            <div id="sourceFields"></div>
+          </div>
+
+          <!-- Target Data Connector -->
+          <div class="form-fieldset">
+            <div class="fieldset-title">📤 Target Data Connector</div>
+            <div class="form-group">
+              <label for="targetType">Select Platform *</label>
+              <select id="targetType" onchange="renderTargetFields()">
+                <option value="snowflake" selected>Snowflake (Data Warehouse)</option>
+                <option value="mysql">MySQL Database</option>
+                <option value="csv">CSV File</option>
+              </select>
+            </div>
+            <div id="targetFields"></div>
+          </div>
+
+          <button type="submit" class="btn-submit">⚡ Save Connector & Generate Webhook URL</button>
+        </form>
       </div>
 
-      <div style="overflow-x: auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>Job ID</th>
-              <th>Tool</th>
-              <th>Source Platform</th>
-              <th>Target Platform</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="pipelineTableBody">
-            <tr>
-              <td colspan="5" class="empty-state">Loading active connectors from AWS RDS MySQL...</td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- RIGHT PANEL: ACTIVE CONNECTORS CONSOLE -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">📜 Active Connectors (AWS RDS MySQL)</div>
+          <button id="refreshBtn" class="btn-action" onclick="fetchPipelines()">
+            <span id="refreshIcon">🔄</span> Refresh
+          </button>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Job ID</th>
+                <th>Source</th>
+                <th>Target</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="pipelineTableBody">
+              <tr>
+                <td colspan="4" class="empty-state">Loading active connectors from AWS RDS MySQL...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
+
     </div>
   </div>
 
   <script>
-    let registeredAdapters = { log: [], source: [], target: [] };
-
     function getServerUrl() {
       return window.location.origin;
     }
@@ -470,60 +455,12 @@
       }
     }
 
-    /* Dynamically fetch adapters from backend GET /health */
-    async function loadBackendAdapters() {
-      try {
-        const res = await fetch(`${getServerUrl()}/health`);
-        const data = await res.json();
-        if (data.adapters) {
-          registeredAdapters = data.adapters;
-          
-          document.getElementById('statLogAdapters').textContent = registeredAdapters.log.length;
-          document.getElementById('statSourceAdapters').textContent = registeredAdapters.source.length;
-          document.getElementById('statTargetAdapters').textContent = registeredAdapters.target.length;
-
-          populateSelect('toolType', registeredAdapters.log, 'dbt');
-          populateSelect('sourceType', registeredAdapters.source, 'snowflake');
-          populateSelect('targetType', registeredAdapters.target, 'snowflake');
-
-          renderToolFields();
-          renderSourceFields();
-          renderTargetFields();
-        }
-      } catch (err) {
-        console.error('Failed to load backend adapters:', err);
-      }
-    }
-
-    function populateSelect(elementId, items, defaultValue) {
-      const select = document.getElementById(elementId);
-      select.innerHTML = items.map(item => {
-        const label = formatPlatformLabel(item);
-        const selected = item === defaultValue ? 'selected' : '';
-        return `<option value="${item}" ${selected}>${label}</option>`;
-      }).join('');
-    }
-
-    function formatPlatformLabel(key) {
-      const map = {
-        'dbt': 'dbt Cloud',
-        'airbyte': 'Airflow / Airbyte',
-        'snowflake': 'Snowflake (Data Warehouse)',
-        'mysql': 'MySQL Database',
-        'postgres': 'PostgreSQL Database',
-        'csv': 'CSV File',
-        'excel': 'Excel Spreadsheet'
-      };
-      return map[key] || key.toUpperCase();
-    }
-
-    /* Compact Form Fields Renderers — ZERO Hardcoded User URLs */
     function renderToolFields() {
       const type = document.getElementById('toolType').value;
       const container = document.getElementById('toolFields');
       if (type === 'dbt') {
         container.innerHTML = `
-          <div class="form-row-2">
+          <div class="form-row">
             <div class="form-group"><label>Account ID *</label><input type="text" id="dbt_account_id" placeholder="e.g. 70506183151322" required></div>
             <div class="form-group"><label>API Token *</label><input type="password" id="dbt_api_token" placeholder="dbtc_aws..." required></div>
           </div>
@@ -542,31 +479,31 @@
       const container = document.getElementById('sourceFields');
       if (type === 'snowflake') {
         container.innerHTML = `
-          <div class="form-row-2">
+          <div class="form-row">
             <div class="form-group"><label>Account *</label><input type="text" id="src_sf_account" placeholder="e.g. xy12345.aws" required></div>
             <div class="form-group"><label>User *</label><input type="text" id="src_sf_user" placeholder="e.g. db_user" required></div>
           </div>
-          <div class="form-row-2">
+          <div class="form-row">
             <div class="form-group"><label>Password *</label><input type="password" id="src_sf_pass" placeholder="••••••••••••" required></div>
             <div class="form-group"><label>Warehouse *</label><input type="text" id="src_sf_wh" placeholder="e.g. COMPUTE_WH" required></div>
           </div>
-          <div class="form-row-3">
+          <div class="form-row">
             <div class="form-group"><label>Database *</label><input type="text" id="src_sf_db" placeholder="e.g. RAW_DB" required></div>
             <div class="form-group"><label>Schema *</label><input type="text" id="src_sf_schema" placeholder="e.g. RAW" required></div>
             <div class="form-group"><label>Table *</label><input type="text" id="src_sf_table" placeholder="e.g. ORDERS" required></div>
           </div>
         `;
-      } else if (type === 'mysql' || type === 'postgres') {
+      } else if (type === 'mysql') {
         container.innerHTML = `
-          <div class="form-row-2">
+          <div class="form-row">
             <div class="form-group"><label>Host *</label><input type="text" id="src_my_host" placeholder="e.g. db.example.com" required></div>
-            <div class="form-group"><label>Port</label><input type="number" id="src_my_port" placeholder="3306" value="${type==='postgres'?5432:3306}"></div>
+            <div class="form-group"><label>Port</label><input type="number" id="src_my_port" placeholder="3306" value="3306"></div>
           </div>
-          <div class="form-row-2">
+          <div class="form-row">
             <div class="form-group"><label>User *</label><input type="text" id="src_my_user" placeholder="e.g. admin" required></div>
             <div class="form-group"><label>Password *</label><input type="password" id="src_my_pass" placeholder="••••••••••••" required></div>
           </div>
-          <div class="form-row-2">
+          <div class="form-row">
             <div class="form-group"><label>Database *</label><input type="text" id="src_my_db" placeholder="e.g. raw_db" required></div>
             <div class="form-group"><label>Table *</label><input type="text" id="src_my_table" placeholder="e.g. raw_table" required></div>
           </div>
@@ -581,31 +518,31 @@
       const container = document.getElementById('targetFields');
       if (type === 'snowflake') {
         container.innerHTML = `
-          <div class="form-row-2">
+          <div class="form-row">
             <div class="form-group"><label>Account *</label><input type="text" id="tgt_sf_account" placeholder="e.g. xy12345.aws" required></div>
             <div class="form-group"><label>User *</label><input type="text" id="tgt_sf_user" placeholder="e.g. db_user" required></div>
           </div>
-          <div class="form-row-2">
+          <div class="form-row">
             <div class="form-group"><label>Password *</label><input type="password" id="tgt_sf_pass" placeholder="••••••••••••" required></div>
             <div class="form-group"><label>Warehouse *</label><input type="text" id="tgt_sf_wh" placeholder="e.g. COMPUTE_WH" required></div>
           </div>
-          <div class="form-row-3">
+          <div class="form-row">
             <div class="form-group"><label>Database *</label><input type="text" id="tgt_sf_db" placeholder="e.g. ANALYTICS_DB" required></div>
             <div class="form-group"><label>Schema *</label><input type="text" id="tgt_sf_schema" placeholder="e.g. STAGING" required></div>
             <div class="form-group"><label>Table *</label><input type="text" id="tgt_sf_table" placeholder="e.g. STG_ORDERS" required></div>
           </div>
         `;
-      } else if (type === 'mysql' || type === 'postgres') {
+      } else if (type === 'mysql') {
         container.innerHTML = `
-          <div class="form-row-2">
+          <div class="form-row">
             <div class="form-group"><label>Host *</label><input type="text" id="tgt_my_host" placeholder="e.g. db.example.com" required></div>
-            <div class="form-group"><label>Port</label><input type="number" id="tgt_my_port" placeholder="3306" value="${type==='postgres'?5432:3306}"></div>
+            <div class="form-group"><label>Port</label><input type="number" id="tgt_my_port" placeholder="3306" value="3306"></div>
           </div>
-          <div class="form-row-2">
+          <div class="form-row">
             <div class="form-group"><label>User *</label><input type="text" id="tgt_my_user" placeholder="e.g. admin" required></div>
             <div class="form-group"><label>Password *</label><input type="password" id="tgt_my_pass" placeholder="••••••••••••" required></div>
           </div>
-          <div class="form-row-2">
+          <div class="form-row">
             <div class="form-group"><label>Database *</label><input type="text" id="tgt_my_db" placeholder="e.g. analytics_db" required></div>
             <div class="form-group"><label>Table *</label><input type="text" id="tgt_my_table" placeholder="e.g. target_table" required></div>
           </div>
@@ -640,10 +577,10 @@
           schema: document.getElementById('src_sf_schema').value,
           table: document.getElementById('src_sf_table').value,
         };
-      } else if (type === 'mysql' || type === 'postgres') {
+      } else if (type === 'mysql') {
         return {
           host: document.getElementById('src_my_host').value,
-          port: parseInt(document.getElementById('src_my_port').value || (type==='postgres'?5432:3306)),
+          port: parseInt(document.getElementById('src_my_port').value || 3306),
           username: document.getElementById('src_my_user').value,
           password: document.getElementById('src_my_pass').value,
           database: document.getElementById('src_my_db').value,
@@ -666,10 +603,10 @@
           schema: document.getElementById('tgt_sf_schema').value,
           table: document.getElementById('tgt_sf_table').value,
         };
-      } else if (type === 'mysql' || type === 'postgres') {
+      } else if (type === 'mysql') {
         return {
           host: document.getElementById('tgt_my_host').value,
-          port: parseInt(document.getElementById('tgt_my_port').value || (type==='postgres'?5432:3306)),
+          port: parseInt(document.getElementById('tgt_my_port').value || 3306),
           username: document.getElementById('tgt_my_user').value,
           password: document.getElementById('tgt_my_pass').value,
           database: document.getElementById('tgt_my_db').value,
@@ -749,7 +686,6 @@
             return `
               <tr>
                 <td><strong>${p.job_id}</strong></td>
-                <td><span class="tag-platform tag-pg">${p.tool_type}</span></td>
                 <td><span class="tag-platform ${srcTag}">${p.source_type}</span></td>
                 <td><span class="tag-platform ${tgtTag}">${p.target_type}</span></td>
                 <td>
@@ -761,7 +697,7 @@
           }).join('');
         } else {
           statPipelines.textContent = '0';
-          tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No active connectors registered in AWS RDS MySQL.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="4" class="empty-state">No active connectors registered in AWS RDS MySQL.</td></tr>`;
         }
       } catch (err) {
         showToast(`✕ Error fetching active connectors: ${err.message}`, false);
@@ -775,7 +711,6 @@
     function getPlatformTagClass(type) {
       if (type === 'snowflake') return 'tag-sf';
       if (type === 'mysql') return 'tag-my';
-      if (type === 'postgres') return 'tag-pg';
       return 'tag-file';
     }
 
@@ -793,7 +728,9 @@
     }
 
     // Startup initialization
-    loadBackendAdapters();
+    renderToolFields();
+    renderSourceFields();
+    renderTargetFields();
     fetchPipelines();
   </script>
 </body>

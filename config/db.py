@@ -46,11 +46,12 @@ def is_postgres() -> bool:
 def _get_mysql_conn() -> Any:
     if pymysql is None:
         raise RuntimeError("pymysql is not installed")
-    host = str(os.getenv("CENTRAL_DB_HOST") or os.getenv("MYSQL_HOST") or "localhost")
-    port = int(os.getenv("CENTRAL_DB_PORT") or os.getenv("MYSQL_PORT") or 3306)
-    db = str(os.getenv("CENTRAL_DB_NAME") or os.getenv("MYSQL_DATABASE") or "webhooks_db")
-    user = str(os.getenv("CENTRAL_DB_USER") or os.getenv("MYSQL_USER") or "admin")
-    password = str(os.getenv("CENTRAL_DB_PASSWORD") or os.getenv("MYSQL_PASSWORD") or "")
+    host = os.getenv("CENTRAL_DB_HOST") or os.getenv("MYSQL_HOST") or "localhost"
+    port_val = os.getenv("CENTRAL_DB_PORT") or os.getenv("MYSQL_PORT") or "3306"
+    port = int(port_val)
+    db = os.getenv("CENTRAL_DB_NAME") or os.getenv("MYSQL_DATABASE") or "webhooks_db"
+    user = os.getenv("CENTRAL_DB_USER") or os.getenv("MYSQL_USER") or "admin"
+    password = os.getenv("CENTRAL_DB_PASSWORD") or os.getenv("MYSQL_PASSWORD") or ""
     
     dict_cursor = getattr(getattr(pymysql, "cursors", None), "DictCursor", None)
 
@@ -63,7 +64,7 @@ def _get_mysql_conn() -> Any:
 def _get_pg_conn() -> Any:
     if psycopg2 is None:
         raise RuntimeError("psycopg2 is not installed")
-    url = str(os.getenv("DATABASE_URL", ""))
+    url = os.getenv("DATABASE_URL", "")
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
     return psycopg2.connect(url)  # type: ignore # pyright: ignore
@@ -224,9 +225,9 @@ def register_pipeline(
     tl_url = tool_cfg.get("base_url") or tool_cfg.get("url")
 
     params = (
-        str(job_id), str(tool_type), str(source_type),
+        job_id, tool_type, source_type,
         s_acc, s_usr, s_pwd, s_wh, s_db, s_sch, s_tbl, s_hst, s_prt, s_pth,
-        str(target_type),
+        target_type,
         t_acc, t_usr, t_pwd, t_wh, t_db, t_sch, t_tbl, t_hst, t_prt, t_pth,
         tl_acc, tl_tok, tl_url, webhook_url
     )
@@ -364,7 +365,7 @@ def get_pipeline(job_id: str) -> Optional[Dict[str, Any]]:
     if is_mysql():
         conn = _get_mysql_conn()
         with conn.cursor() as cur:  # type: ignore # pyright: ignore
-            cur.execute("SELECT * FROM pipelines WHERE job_id = %s", (str(job_id),))  # type: ignore # pyright: ignore
+            cur.execute("SELECT * FROM pipelines WHERE job_id = %s", (job_id,))  # type: ignore # pyright: ignore
             row = cur.fetchone()  # type: ignore # pyright: ignore
         conn.close()
         return _format_relational_row(dict(row)) if row else None  # type: ignore # pyright: ignore
@@ -372,12 +373,12 @@ def get_pipeline(job_id: str) -> Optional[Dict[str, Any]]:
         dict_cursor = getattr(getattr(psycopg2, "extras", None), "DictCursor", None)  # type: ignore # pyright: ignore
         with _get_pg_conn() as conn:
             with conn.cursor(cursor_factory=dict_cursor) as cur:  # type: ignore # pyright: ignore
-                cur.execute("SELECT * FROM pipelines WHERE job_id = %s", (str(job_id),))  # type: ignore # pyright: ignore
+                cur.execute("SELECT * FROM pipelines WHERE job_id = %s", (job_id,))  # type: ignore # pyright: ignore
                 row = cur.fetchone()  # type: ignore # pyright: ignore
         return _format_relational_row(dict(row)) if row else None  # type: ignore # pyright: ignore
     else:
         with _get_sqlite_conn() as conn:
-            row = conn.execute("SELECT * FROM pipelines WHERE job_id = ?", (str(job_id),)).fetchone()  # type: ignore # pyright: ignore
+            row = conn.execute("SELECT * FROM pipelines WHERE job_id = ?", (job_id,)).fetchone()  # type: ignore # pyright: ignore
         return _format_relational_row(dict(row)) if row else None  # type: ignore # pyright: ignore
 
 
@@ -394,27 +395,31 @@ def find_pipeline(
 
     # 1. Exact job_id match
     if job_id:
+        target_jid = str(job_id)
         for p in pipelines:
-            if str(p.get("job_id")) == str(job_id):
+            if str(p.get("job_id") or "") == target_jid:
                 return p
 
     # 2. Exact run_id match
     if run_id:
+        target_rid = str(run_id)
         for p in pipelines:
-            if str(p.get("job_id")) == str(run_id):
+            if str(p.get("job_id") or "") == target_rid:
                 return p
 
     # 3. Match by tool_account_id (dbt Account ID)
     if tool_account_id:
+        target_aid = str(tool_account_id)
         for p in pipelines:
-            if str(p.get("tool_account_id")) == str(tool_account_id):
+            if str(p.get("tool_account_id") or "") == target_aid:
                 return p
 
     # 4. Match by user_id inside webhook_url
     if user_id:
+        target_uid = str(user_id)
         for p in pipelines:
             url = str(p.get("webhook_url") or "")
-            if str(user_id) in url:
+            if target_uid in url:
                 return p
 
     # 5. Fallback: if single pipeline registered, use it
@@ -451,20 +456,20 @@ def delete_pipeline(job_id: str) -> bool:
     if is_mysql():
         conn = _get_mysql_conn()
         with conn.cursor() as cur:  # type: ignore # pyright: ignore
-            cur.execute("DELETE FROM pipelines WHERE job_id = %s", (str(job_id),))  # type: ignore # pyright: ignore
+            cur.execute("DELETE FROM pipelines WHERE job_id = %s", (job_id,))  # type: ignore # pyright: ignore
             count = cur.rowcount  # type: ignore # pyright: ignore
         conn.close()
         return count > 0
     elif is_postgres():
         with _get_pg_conn() as conn:
             with conn.cursor() as cur:  # type: ignore # pyright: ignore
-                cur.execute("DELETE FROM pipelines WHERE job_id = %s", (str(job_id),))  # type: ignore # pyright: ignore
+                cur.execute("DELETE FROM pipelines WHERE job_id = %s", (job_id,))  # type: ignore # pyright: ignore
                 count = cur.rowcount  # type: ignore # pyright: ignore
             conn.commit()
         return count > 0
     else:
         with _get_sqlite_conn() as conn:
-            sql_cur = conn.execute("DELETE FROM pipelines WHERE job_id = ?", (str(job_id),))  # type: ignore # pyright: ignore
+            sql_cur = conn.execute("DELETE FROM pipelines WHERE job_id = ?", (job_id,))  # type: ignore # pyright: ignore
             count = sql_cur.rowcount  # type: ignore # pyright: ignore
         return count > 0
 

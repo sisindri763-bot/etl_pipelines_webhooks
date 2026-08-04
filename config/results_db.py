@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS source_asset_metadata (
     row_count BIGINT,
     column_count INT,
     size_bytes BIGINT,
-    column_names JSON,
+    column_names TEXT,
     last_updated_at DATETIME NULL,
     observed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_source_run_id FOREIGN KEY (run_id) REFERENCES pipeline_runs(id) ON DELETE CASCADE
@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS target_asset_metadata (
     row_count BIGINT,
     column_count INT,
     size_bytes BIGINT,
-    column_names JSON,
+    column_names TEXT,
     last_updated_at DATETIME NULL,
     observed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_target_run_id FOREIGN KEY (run_id) REFERENCES pipeline_runs(id) ON DELETE CASCADE
@@ -478,7 +478,7 @@ def save_source_asset_metadata(
     run_uuid = _to_valid_uuid(run_id)
 
     cols_val = source_data.get("columns") or source_data.get("column_names")
-    col_names_str = json.dumps(cols_val) if isinstance(cols_val, (list, tuple)) else (cols_val if isinstance(cols_val, str) else None)
+    col_names_str = ", ".join([str(c) for c in cols_val]) if isinstance(cols_val, (list, tuple)) else (str(cols_val) if cols_val else None)
 
     last_updated_val = _to_mysql_datetime(source_data.get("last_updated_at")) if is_mysql() else source_data.get("last_updated_at")
 
@@ -579,7 +579,7 @@ def save_target_asset_metadata(
     run_uuid = _to_valid_uuid(run_id)
 
     cols_val = target_data.get("columns") or target_data.get("column_names")
-    col_names_str = json.dumps(cols_val) if isinstance(cols_val, (list, tuple)) else (cols_val if isinstance(cols_val, str) else None)
+    col_names_str = ", ".join([str(c) for c in cols_val]) if isinstance(cols_val, (list, tuple)) else (str(cols_val) if cols_val else None)
 
     last_updated_val = _to_mysql_datetime(target_data.get("last_updated_at")) if is_mysql() else target_data.get("last_updated_at")
 

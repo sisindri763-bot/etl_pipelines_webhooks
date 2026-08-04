@@ -5,6 +5,7 @@ Config DB access layer — supports AWS RDS MySQL (when CENTRAL_DB_HOST is set),
 Supabase / PostgreSQL (when DATABASE_URL is set), and SQLite fallback.
 
 Stores pipeline configurations in table: `pipelines`
+Uses explicit relational columns for all configuration properties.
 """
 
 import json
@@ -16,14 +17,14 @@ from typing import Any, Dict, List, Optional
 from dotenv import load_dotenv
 
 try:
-    import pymysql  # type: ignore # pyright: ignore[reportMissingImports]
-    import pymysql.cursors  # type: ignore # pyright: ignore[reportMissingImports]
+    import pymysql
+    import pymysql.cursors
 except ImportError:
     pymysql = None
 
 try:
-    import psycopg2  # type: ignore # pyright: ignore[reportMissingImports]
-    import psycopg2.extras  # type: ignore # pyright: ignore[reportMissingImports]
+    import psycopg2
+    import psycopg2.extras
 except ImportError:
     psycopg2 = None
 
@@ -52,7 +53,7 @@ def _get_mysql_conn():
     user = os.getenv("CENTRAL_DB_USER") or os.getenv("MYSQL_USER") or "admin"
     password = os.getenv("CENTRAL_DB_PASSWORD") or os.getenv("MYSQL_PASSWORD") or ""
     dict_cursor = getattr(getattr(pymysql, "cursors", None), "DictCursor", None)
-    return pymysql.connect(  # type: ignore # pyright: ignore
+    return pymysql.connect(
         host=host, port=port, user=user, password=password,
         database=db, charset="utf8mb4", cursorclass=dict_cursor, autocommit=True
     )
@@ -64,8 +65,7 @@ def _get_pg_conn():
     url = os.getenv("DATABASE_URL", "")
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
-    conn = psycopg2.connect(url)  # type: ignore # pyright: ignore
-    return conn
+    return psycopg2.connect(url)
 
 
 def _get_sqlite_conn() -> sqlite3.Connection:
@@ -76,7 +76,7 @@ def _get_sqlite_conn() -> sqlite3.Connection:
 
 
 # ---------------------------------------------------------------------------
-# Schema bootstrap
+# Schema bootstrap with Explicit Relational Columns
 # ---------------------------------------------------------------------------
 
 MYSQL_SCHEMA = """
@@ -84,10 +84,30 @@ CREATE TABLE IF NOT EXISTS pipelines (
     job_id VARCHAR(255) PRIMARY KEY,
     tool_type VARCHAR(64) NOT NULL,
     source_type VARCHAR(64) NOT NULL,
-    source_config JSON NOT NULL,
+    source_account VARCHAR(255) NULL,
+    source_username VARCHAR(255) NULL,
+    source_password VARCHAR(255) NULL,
+    source_warehouse VARCHAR(255) NULL,
+    source_database VARCHAR(255) NULL,
+    source_schema VARCHAR(255) NULL,
+    source_table VARCHAR(255) NULL,
+    source_host VARCHAR(255) NULL,
+    source_port INT NULL,
+    source_path VARCHAR(500) NULL,
     target_type VARCHAR(64) NOT NULL,
-    target_config JSON NOT NULL,
-    tool_config JSON NOT NULL,
+    target_account VARCHAR(255) NULL,
+    target_username VARCHAR(255) NULL,
+    target_password VARCHAR(255) NULL,
+    target_warehouse VARCHAR(255) NULL,
+    target_database VARCHAR(255) NULL,
+    target_schema VARCHAR(255) NULL,
+    target_table VARCHAR(255) NULL,
+    target_host VARCHAR(255) NULL,
+    target_port INT NULL,
+    target_path VARCHAR(500) NULL,
+    tool_account_id VARCHAR(255) NULL,
+    tool_api_token VARCHAR(255) NULL,
+    tool_base_url VARCHAR(500) NULL,
     webhook_url VARCHAR(500) NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -99,10 +119,11 @@ CREATE TABLE IF NOT EXISTS pipelines (
     job_id        TEXT PRIMARY KEY,
     tool_type     TEXT NOT NULL,
     source_type   TEXT NOT NULL,
-    source_config TEXT NOT NULL,
+    source_account TEXT, source_username TEXT, source_password TEXT, source_warehouse TEXT, source_database TEXT, source_schema TEXT, source_table TEXT, source_host TEXT, source_port INT, source_path TEXT,
     target_type   TEXT NOT NULL,
-    target_config TEXT NOT NULL,
-    tool_config   TEXT NOT NULL DEFAULT '{}',
+    target_account TEXT, target_username TEXT, target_password TEXT, target_warehouse TEXT, target_database TEXT, target_schema TEXT, target_table TEXT, target_host TEXT, target_port INT, target_path TEXT,
+    tool_account_id TEXT, tool_api_token TEXT, tool_base_url TEXT,
+    webhook_url   TEXT,
     created_at    TIMESTAMPTZ DEFAULT now(),
     updated_at    TIMESTAMPTZ DEFAULT now()
 );
@@ -113,10 +134,11 @@ CREATE TABLE IF NOT EXISTS pipelines (
     job_id        TEXT PRIMARY KEY,
     tool_type     TEXT NOT NULL,
     source_type   TEXT NOT NULL,
-    source_config TEXT NOT NULL,
+    source_account TEXT, source_username TEXT, source_password TEXT, source_warehouse TEXT, source_database TEXT, source_schema TEXT, source_table TEXT, source_host TEXT, source_port INT, source_path TEXT,
     target_type   TEXT NOT NULL,
-    target_config TEXT NOT NULL,
-    tool_config   TEXT NOT NULL DEFAULT '{}',
+    target_account TEXT, target_username TEXT, target_password TEXT, target_warehouse TEXT, target_database TEXT, target_schema TEXT, target_table TEXT, target_host TEXT, target_port INT, target_path TEXT,
+    tool_account_id TEXT, tool_api_token TEXT, tool_base_url TEXT,
+    webhook_url   TEXT,
     created_at    TEXT DEFAULT (datetime('now')),
     updated_at    TEXT DEFAULT (datetime('now'))
 );
@@ -158,7 +180,7 @@ _init_db()
 
 
 # ---------------------------------------------------------------------------
-# CRUD API
+# CRUD API with Explicit Relational Mapping
 # ---------------------------------------------------------------------------
 
 def register_pipeline(
@@ -171,32 +193,81 @@ def register_pipeline(
     tool_config: Optional[Dict[str, Any]] = None,
     webhook_url: Optional[str] = None,
 ) -> None:
-    """Upsert a pipeline configuration."""
+    """Upsert a pipeline configuration into explicit relational columns."""
+    tool_cfg = tool_config or {}
+
+    s_acc = source_config.get("account")
+    s_usr = source_config.get("username") or source_config.get("user")
+    s_pwd = source_config.get("password") or source_config.get("pass")
+    s_wh  = source_config.get("warehouse")
+    s_db  = source_config.get("database") or source_config.get("dbname")
+    s_sch = source_config.get("schema") or source_config.get("schema_name")
+    s_tbl = source_config.get("table") or source_config.get("table_name")
+    s_hst = source_config.get("host")
+    s_prt = source_config.get("port")
+    s_pth = source_config.get("url_or_path") or source_config.get("path")
+
+    t_acc = target_config.get("account")
+    t_usr = target_config.get("username") or target_config.get("user")
+    t_pwd = target_config.get("password") or target_config.get("pass")
+    t_wh  = target_config.get("warehouse")
+    t_db  = target_config.get("database") or target_config.get("dbname")
+    t_sch = target_config.get("schema") or target_config.get("schema_name")
+    t_tbl = target_config.get("table") or target_config.get("table_name")
+    t_hst = target_config.get("host")
+    t_prt = target_config.get("port")
+    t_pth = target_config.get("url_or_path") or target_config.get("path")
+
+    tl_acc = tool_cfg.get("account_id")
+    tl_tok = tool_cfg.get("api_token")
+    tl_url = tool_cfg.get("base_url") or tool_cfg.get("url")
+
     if is_mysql():
         conn = _get_mysql_conn()
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO pipelines
-                    (job_id, tool_type, source_type, source_config, target_type, target_config, tool_config, webhook_url)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    (job_id, tool_type, source_type,
+                     source_account, source_username, source_password, source_warehouse, source_database, source_schema, source_table, source_host, source_port, source_path,
+                     target_type,
+                     target_account, target_username, target_password, target_warehouse, target_database, target_schema, target_table, target_host, target_port, target_path,
+                     tool_account_id, tool_api_token, tool_base_url, webhook_url)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
-                    tool_type     = VALUES(tool_type),
-                    source_type   = VALUES(source_type),
-                    source_config = VALUES(source_config),
-                    target_type   = VALUES(target_type),
-                    target_config = VALUES(target_config),
-                    tool_config   = VALUES(tool_config),
-                    webhook_url   = VALUES(webhook_url),
-                    updated_at    = CURRENT_TIMESTAMP
+                    tool_type        = VALUES(tool_type),
+                    source_type      = VALUES(source_type),
+                    source_account   = VALUES(source_account),
+                    source_username  = VALUES(source_username),
+                    source_password  = VALUES(source_password),
+                    source_warehouse = VALUES(source_warehouse),
+                    source_database  = VALUES(source_database),
+                    source_schema    = VALUES(source_schema),
+                    source_table     = VALUES(source_table),
+                    source_host      = VALUES(source_host),
+                    source_port      = VALUES(source_port),
+                    source_path      = VALUES(source_path),
+                    target_type      = VALUES(target_type),
+                    target_account   = VALUES(target_account),
+                    target_username  = VALUES(target_username),
+                    target_password  = VALUES(target_password),
+                    target_warehouse = VALUES(target_warehouse),
+                    target_database  = VALUES(target_database),
+                    target_schema    = VALUES(target_schema),
+                    target_table     = VALUES(target_table),
+                    target_host      = VALUES(target_host),
+                    target_port      = VALUES(target_port),
+                    target_path      = VALUES(target_path),
+                    tool_account_id  = VALUES(tool_account_id),
+                    tool_api_token   = VALUES(tool_api_token),
+                    tool_base_url    = VALUES(tool_base_url),
+                    webhook_url      = VALUES(webhook_url),
+                    updated_at       = CURRENT_TIMESTAMP
             """, (
-                str(job_id),
-                tool_type,
-                source_type,
-                json.dumps(source_config),
+                str(job_id), tool_type, source_type,
+                s_acc, s_usr, s_pwd, s_wh, s_db, s_sch, s_tbl, s_hst, s_prt, s_pth,
                 target_type,
-                json.dumps(target_config),
-                json.dumps(tool_config or {}),
-                webhook_url,
+                t_acc, t_usr, t_pwd, t_wh, t_db, t_sch, t_tbl, t_hst, t_prt, t_pth,
+                tl_acc, tl_tok, tl_url, webhook_url
             ))
         conn.commit()
         conn.close()
@@ -205,72 +276,100 @@ def register_pipeline(
             with conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO pipelines
-                        (job_id, tool_type, source_type, source_config, target_type, target_config, tool_config)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        (job_id, tool_type, source_type,
+                         source_account, source_username, source_password, source_warehouse, source_database, source_schema, source_table, source_host, source_port, source_path,
+                         target_type,
+                         target_account, target_username, target_password, target_warehouse, target_database, target_schema, target_table, target_host, target_port, target_path,
+                         tool_account_id, tool_api_token, tool_base_url, webhook_url)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (job_id) DO UPDATE SET
-                        tool_type     = EXCLUDED.tool_type,
-                        source_type   = EXCLUDED.source_type,
-                        source_config = EXCLUDED.source_config,
-                        target_type   = EXCLUDED.target_type,
-                        target_config = EXCLUDED.target_config,
-                        tool_config   = EXCLUDED.tool_config,
-                        updated_at    = now()
+                        tool_type        = EXCLUDED.tool_type,
+                        source_type      = EXCLUDED.source_type,
+                        source_account   = EXCLUDED.source_account,
+                        source_username  = EXCLUDED.source_username,
+                        source_password  = EXCLUDED.source_password,
+                        source_warehouse = EXCLUDED.source_warehouse,
+                        source_database  = EXCLUDED.source_database,
+                        source_schema    = EXCLUDED.source_schema,
+                        source_table     = EXCLUDED.source_table,
+                        target_type      = EXCLUDED.target_type,
+                        target_account   = EXCLUDED.target_account,
+                        target_username  = EXCLUDED.target_username,
+                        target_password  = EXCLUDED.target_password,
+                        target_warehouse = EXCLUDED.target_warehouse,
+                        target_database  = EXCLUDED.target_database,
+                        target_schema    = EXCLUDED.target_schema,
+                        target_table     = EXCLUDED.target_table,
+                        webhook_url      = EXCLUDED.webhook_url,
+                        updated_at       = now()
                 """, (
-                    str(job_id),
-                    tool_type,
-                    source_type,
-                    json.dumps(source_config),
+                    str(job_id), tool_type, source_type,
+                    s_acc, s_usr, s_pwd, s_wh, s_db, s_sch, s_tbl, s_hst, s_prt, s_pth,
                     target_type,
-                    json.dumps(target_config),
-                    json.dumps(tool_config or {}),
+                    t_acc, t_usr, t_pwd, t_wh, t_db, t_sch, t_tbl, t_hst, t_prt, t_pth,
+                    tl_acc, tl_tok, tl_url, webhook_url
                 ))
             conn.commit()
     else:
         with _get_sqlite_conn() as conn:
             conn.execute("""
                 INSERT INTO pipelines
-                    (job_id, tool_type, source_type, source_config, target_type, target_config, tool_config)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                    (job_id, tool_type, source_type,
+                     source_account, source_username, source_password, source_warehouse, source_database, source_schema, source_table, source_host, source_port, source_path,
+                     target_type,
+                     target_account, target_username, target_password, target_warehouse, target_database, target_schema, target_table, target_host, target_port, target_path,
+                     tool_account_id, tool_api_token, tool_base_url, webhook_url)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(job_id) DO UPDATE SET
-                    tool_type     = excluded.tool_type,
-                    source_type   = excluded.source_type,
-                    source_config = excluded.source_config,
-                    target_type   = excluded.target_type,
-                    target_config = excluded.target_config,
-                    tool_config   = excluded.tool_config,
-                    updated_at    = datetime('now')
+                    tool_type        = excluded.tool_type,
+                    source_type      = excluded.source_type,
+                    source_account   = excluded.source_account,
+                    source_username  = excluded.source_username,
+                    source_password  = excluded.source_password,
+                    source_warehouse = excluded.source_warehouse,
+                    source_database  = excluded.source_database,
+                    source_schema    = excluded.source_schema,
+                    source_table     = excluded.source_table,
+                    target_type      = excluded.target_type,
+                    target_account   = excluded.target_account,
+                    target_username  = excluded.target_username,
+                    target_password  = excluded.target_password,
+                    target_warehouse = excluded.target_warehouse,
+                    target_database  = excluded.target_database,
+                    target_schema    = excluded.target_schema,
+                    target_table     = excluded.target_table,
+                    webhook_url      = excluded.webhook_url,
+                    updated_at       = datetime('now')
             """, (
-                str(job_id),
-                tool_type,
-                source_type,
-                json.dumps(source_config),
+                str(job_id), tool_type, source_type,
+                s_acc, s_usr, s_pwd, s_wh, s_db, s_sch, s_tbl, s_hst, s_prt, s_pth,
                 target_type,
-                json.dumps(target_config),
-                json.dumps(tool_config or {}),
+                t_acc, t_usr, t_pwd, t_wh, t_db, t_sch, t_tbl, t_hst, t_prt, t_pth,
+                tl_acc, tl_tok, tl_url, webhook_url
             ))
-    logger.info("Pipeline registered: job_id=%s", job_id)
+    logger.info("Pipeline registered with relational columns: job_id=%s", job_id)
 
 
 def get_pipeline(job_id: str) -> Optional[Dict[str, Any]]:
-    """Return a pipeline config dict, or None if not found."""
+    """Return a pipeline config dict, mapped from relational columns."""
     if is_mysql():
         conn = _get_mysql_conn()
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM pipelines WHERE job_id = %s", (str(job_id),))  # type: ignore # pyright: ignore
-            row = cur.fetchone()  # type: ignore # pyright: ignore
+            cur.execute("SELECT * FROM pipelines WHERE job_id = %s", (str(job_id),))
+            row = cur.fetchone()
         conn.close()
-        return _parse_json_cols(dict(row)) if row else None
+        return _format_relational_row(dict(row)) if row else None
     elif is_postgres():
         dict_cursor = getattr(getattr(psycopg2, "extras", None), "DictCursor", None)
         with _get_pg_conn() as conn:
-            with conn.cursor(cursor_factory=dict_cursor) as cur:  # type: ignore # pyright: ignore
-                cur.execute("SELECT * FROM pipelines WHERE job_id = %s", (str(job_id),))  # type: ignore # pyright: ignore
-                row = cur.fetchone()  # type: ignore # pyright: ignore
-        return _parse_json_cols(dict(row)) if row else None
+            with conn.cursor(cursor_factory=dict_cursor) as cur:
+                cur.execute("SELECT * FROM pipelines WHERE job_id = %s", (str(job_id),))
+                row = cur.fetchone()
+        return _format_relational_row(dict(row)) if row else None
     else:
         with _get_sqlite_conn() as conn:
-            row = conn.execute("SELECT * FROM pipelines WHERE job_id = ?", (str(job_id),)).fetchone()  # type: ignore # pyright: ignore
-        return _parse_json_cols(dict(row)) if row else None
+            row = conn.execute("SELECT * FROM pipelines WHERE job_id = ?", (str(job_id),)).fetchone()
+        return _format_relational_row(dict(row)) if row else None
 
 
 def list_pipelines() -> List[Dict[str, Any]]:
@@ -278,21 +377,21 @@ def list_pipelines() -> List[Dict[str, Any]]:
     if is_mysql():
         conn = _get_mysql_conn()
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM pipelines ORDER BY created_at DESC")  # type: ignore # pyright: ignore
-            rows = cur.fetchall()  # type: ignore # pyright: ignore
+            cur.execute("SELECT * FROM pipelines ORDER BY created_at DESC")
+            rows = cur.fetchall()
         conn.close()
-        return [_parse_json_cols(dict(r)) for r in rows]
+        return [_format_relational_row(dict(r)) for r in rows]
     elif is_postgres():
         dict_cursor = getattr(getattr(psycopg2, "extras", None), "DictCursor", None)
         with _get_pg_conn() as conn:
-            with conn.cursor(cursor_factory=dict_cursor) as cur:  # type: ignore # pyright: ignore
-                cur.execute("SELECT * FROM pipelines ORDER BY created_at DESC")  # type: ignore # pyright: ignore
-                rows = cur.fetchall()  # type: ignore # pyright: ignore
-        return [_parse_json_cols(dict(r)) for r in rows]
+            with conn.cursor(cursor_factory=dict_cursor) as cur:
+                cur.execute("SELECT * FROM pipelines ORDER BY created_at DESC")
+                rows = cur.fetchall()
+        return [_format_relational_row(dict(r)) for r in rows]
     else:
         with _get_sqlite_conn() as conn:
-            rows = conn.execute("SELECT * FROM pipelines ORDER BY created_at DESC").fetchall()  # type: ignore # pyright: ignore
-        return [_parse_json_cols(dict(r)) for r in rows]
+            rows = conn.execute("SELECT * FROM pipelines ORDER BY created_at DESC").fetchall()
+        return [_format_relational_row(dict(r)) for r in rows]
 
 
 def delete_pipeline(job_id: str) -> bool:
@@ -300,29 +399,80 @@ def delete_pipeline(job_id: str) -> bool:
     if is_mysql():
         conn = _get_mysql_conn()
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM pipelines WHERE job_id = %s", (str(job_id),))  # type: ignore # pyright: ignore
-            count = cur.rowcount  # type: ignore # pyright: ignore
+            cur.execute("DELETE FROM pipelines WHERE job_id = %s", (str(job_id),))
+            count = cur.rowcount
         conn.close()
         return count > 0
     elif is_postgres():
         with _get_pg_conn() as conn:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM pipelines WHERE job_id = %s", (str(job_id),))  # type: ignore # pyright: ignore
-                count = cur.rowcount  # type: ignore # pyright: ignore
+                cur.execute("DELETE FROM pipelines WHERE job_id = %s", (str(job_id),))
+                count = cur.rowcount
             conn.commit()
         return count > 0
     else:
         with _get_sqlite_conn() as conn:
-            sql_cur = conn.execute("DELETE FROM pipelines WHERE job_id = ?", (str(job_id),))  # type: ignore # pyright: ignore
-            count = sql_cur.rowcount  # type: ignore # pyright: ignore
+            sql_cur = conn.execute("DELETE FROM pipelines WHERE job_id = ?", (str(job_id),))
+            count = sql_cur.rowcount
         return count > 0
 
 
-def _parse_json_cols(d: Dict[str, Any]) -> Dict[str, Any]:
-    for col in ("source_config", "target_config", "tool_config"):
-        if col in d and isinstance(d[col], str):
-            try:
-                d[col] = json.loads(d[col])
-            except Exception:
-                pass
-    return d
+def _format_relational_row(r: Dict[str, Any]) -> Dict[str, Any]:
+    """Assemble config dicts dynamically for adapters."""
+    s_type = r.get("source_type")
+    if s_type == "snowflake":
+        src_cfg = {
+            "account": r.get("source_account"),
+            "username": r.get("source_username"),
+            "password": r.get("source_password"),
+            "warehouse": r.get("source_warehouse"),
+            "database": r.get("source_database"),
+            "schema": r.get("source_schema"),
+            "table": r.get("source_table"),
+        }
+    elif s_type == "mysql":
+        src_cfg = {
+            "host": r.get("source_host"),
+            "port": r.get("source_port"),
+            "username": r.get("source_username"),
+            "password": r.get("source_password"),
+            "database": r.get("source_database"),
+            "table_name": r.get("source_table"),
+        }
+    else:
+        src_cfg = {"url_or_path": r.get("source_path")}
+
+    t_type = r.get("target_type")
+    if t_type == "snowflake":
+        tgt_cfg = {
+            "account": r.get("target_account"),
+            "username": r.get("target_username"),
+            "password": r.get("target_password"),
+            "warehouse": r.get("target_warehouse"),
+            "database": r.get("target_database"),
+            "schema": r.get("target_schema"),
+            "table": r.get("target_table"),
+        }
+    elif t_type == "mysql":
+        tgt_cfg = {
+            "host": r.get("target_host"),
+            "port": r.get("target_port"),
+            "username": r.get("target_username"),
+            "password": r.get("target_password"),
+            "database": r.get("target_database"),
+            "table_name": r.get("target_table"),
+        }
+    else:
+        tgt_cfg = {"url_or_path": r.get("target_path")}
+
+    tool_cfg = {
+        "account_id": r.get("tool_account_id"),
+        "api_token": r.get("tool_api_token"),
+        "base_url": r.get("tool_base_url"),
+    }
+
+    res = dict(r)
+    res["source_config"] = src_cfg
+    res["target_config"] = tgt_cfg
+    res["tool_config"]   = tool_cfg
+    return res

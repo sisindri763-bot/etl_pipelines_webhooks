@@ -179,7 +179,7 @@ _init_db()
 
 
 # ---------------------------------------------------------------------------
-# CRUD API with Explicit Relational Mapping
+# CRUD API with Explicit Relational Mapping & Multi-Tenant Lookup
 # ---------------------------------------------------------------------------
 
 def register_pipeline(
@@ -387,6 +387,49 @@ def get_pipeline(job_id: str) -> Optional[Dict[str, Any]]:
         with _get_sqlite_conn() as conn:
             row = conn.execute("SELECT * FROM pipelines WHERE job_id = ?", (str(job_id),)).fetchone()  # type: ignore # pyright: ignore
         return _format_relational_row(dict(row)) if row else None
+
+
+def find_pipeline(
+    job_id: Optional[str] = None,
+    run_id: Optional[str] = None,
+    tool_account_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Multi-stage enterprise lookup across multi-tenant registered pipelines."""
+    pipelines = list_pipelines()
+    if not pipelines:
+        return None
+
+    # 1. Exact job_id match
+    if job_id:
+        for p in pipelines:
+            if str(p.get("job_id")) == str(job_id):
+                return p
+
+    # 2. Exact run_id match
+    if run_id:
+        for p in pipelines:
+            if str(p.get("job_id")) == str(run_id):
+                return p
+
+    # 3. Match by tool_account_id (dbt Account ID)
+    if tool_account_id:
+        for p in pipelines:
+            if str(p.get("tool_account_id")) == str(tool_account_id):
+                return p
+
+    # 4. Match by user_id inside webhook_url
+    if user_id:
+        for p in pipelines:
+            url = str(p.get("webhook_url") or "")
+            if str(user_id) in url:
+                return p
+
+    # 5. Fallback: if single pipeline registered, use it
+    if len(pipelines) == 1:
+        return pipelines[0]
+
+    return None
 
 
 def list_pipelines() -> List[Dict[str, Any]]:

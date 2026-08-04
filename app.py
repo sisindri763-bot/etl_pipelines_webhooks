@@ -40,7 +40,7 @@ load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from config.db import init_db, register_pipeline, get_pipeline, list_pipelines, delete_pipeline
+from config.db import init_db, register_pipeline, get_pipeline, find_pipeline, list_pipelines, delete_pipeline
 from config.results_db import (
     init_results_db, save_pipeline_run, save_source_asset_metadata, save_target_asset_metadata,
     list_recent_runs, get_run_with_assets,
@@ -167,31 +167,24 @@ def dbt_webhook(user_id: str):
         or ""
     )
 
-    if not job_id:
-        abort(400, description="Could not extract job_id from webhook payload")
+    tool_account_id = str(
+        payload.get("account_id")
+        or payload.get("accountId")
+        or data_dict.get("account_id")
+        or data_dict.get("accountId")
+        or ""
+    )
 
-    # Extract orchestrator context — Airflow (or any orchestrator) may embed these
-    # fields in the webhook payload so the worker knows how the run was triggered.
-    orchestrator_context = {
-        "triggered_by":         payload.get("triggered_by") or payload.get("triggeredBy"),
-        "orchestrator_tool":    payload.get("orchestrator_tool") or payload.get("orchestratorTool"),
-        "orchestrator_dag_id":  payload.get("orchestrator_dag_id") or payload.get("orchestratorDagId"),
-        "orchestrator_task_id": payload.get("orchestrator_task_id") or payload.get("orchestratorTaskId"),
-        "orchestrator_run_id":  payload.get("orchestrator_run_id") or payload.get("orchestratorRunId"),
-    }
+    logger.info("Webhook received — user_id=%s job_id=%s run_id=%s account_id=%s", user_id, job_id, run_id, tool_account_id)
 
-    logger.info("Webhook received — user_id=%s job_id=%s run_id=%s", user_id, job_id, run_id)
-
-    # Look up pipeline config by job_id or run_id fallback
-    pipeline = get_pipeline(job_id)
-    if pipeline is None and run_id:
-        pipeline = get_pipeline(run_id)
+    # Enterprise multi-stage pipeline lookup
+    pipeline = find_pipeline(job_id=job_id, run_id=run_id, tool_account_id=tool_account_id, user_id=user_id)
 
     if pipeline is None:
-        logger.warning("No config for job_id=%s run_id=%s — returning 200 to avoid dbt retries", job_id, run_id)
+        logger.warning("No config found for job_id=%s run_id=%s — returning 200", job_id, run_id)
         return jsonify({
             "status":  "skipped",
-            "reason":  f"No pipeline config registered for job_id={job_id} or run_id={run_id}",
+            "reason":  f"No pipeline config registered for job_id={job_id} or user_id={user_id}",
             "job_id":  job_id,
             "run_id":  run_id,
         }), 200

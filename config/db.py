@@ -395,31 +395,27 @@ def find_pipeline(
 
     # 1. Exact job_id match
     if job_id:
-        target_jid = str(job_id)
         for p in pipelines:
-            if str(p.get("job_id") or "") == target_jid:
+            if p.get("job_id") == job_id:
                 return p
 
     # 2. Exact run_id match
     if run_id:
-        target_rid = str(run_id)
         for p in pipelines:
-            if str(p.get("job_id") or "") == target_rid:
+            if p.get("job_id") == run_id:
                 return p
 
     # 3. Match by tool_account_id (dbt Account ID)
     if tool_account_id:
-        target_aid = str(tool_account_id)
         for p in pipelines:
-            if str(p.get("tool_account_id") or "") == target_aid:
+            if p.get("tool_account_id") == tool_account_id:
                 return p
 
     # 4. Match by user_id inside webhook_url
     if user_id:
-        target_uid = str(user_id)
         for p in pipelines:
             url = str(p.get("webhook_url") or "")
-            if target_uid in url:
+            if user_id in url:
                 return p
 
     # 5. Fallback: if single pipeline registered, use it

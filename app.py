@@ -148,20 +148,22 @@ def dbt_webhook(user_id: str):
     except json.JSONDecodeError:
         abort(400, description="Invalid JSON payload")
 
-    # dbt Cloud webhook payload fields
-    data_obj  = payload.get("data")  # type: ignore # pyright: ignore
+    # dbt Cloud webhook payload fields (supports both camelCase and snake_case)
+    data_obj  = payload.get("data")
     data_dict = data_obj if isinstance(data_obj, dict) else {}
 
     job_id = str(
         payload.get("jobId")
         or payload.get("job_id")
         or data_dict.get("jobId")
+        or data_dict.get("job_id")
         or ""
     )
     run_id = str(
         payload.get("runId")
         or payload.get("run_id")
         or data_dict.get("runId")
+        or data_dict.get("run_id")
         or ""
     )
 

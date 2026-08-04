@@ -229,9 +229,9 @@ def dbt_webhook(user_id: str):
         result["errors"].append({"component": "log", "error": str(exc)})
 
     # ── 2. Source adapter ────────────────────────────────────────────────────
+    source_type   = str(pipeline.get("source_type") or "")
+    source_config = pipeline.get("source_config", {})
     try:
-        source_type    = pipeline["source_type"]
-        source_config  = pipeline.get("source_config", {})
         source_adapter = SOURCE_ADAPTERS.get(source_type)
         if source_adapter is None:
             raise ValueError(f"No source adapter registered for source_type='{source_type}'")
@@ -242,16 +242,15 @@ def dbt_webhook(user_id: str):
     except Exception as exc:
         logger.exception("Source fetch failed — job_id=%s", job_id)
         result["errors"].append({"component": "source", "error": str(exc)})
-        src_cfg = pipeline.get("source_config", {})
-        s_name = str(pipeline.get("source_type") or "Source").capitalize()
-        s_obj  = src_cfg.get("table") or src_cfg.get("table_name") or src_cfg.get("url_or_path") or src_cfg.get("database") or ""
+        s_name = source_type.capitalize() if source_type else "Source"
+        s_obj  = source_config.get("table") or source_config.get("table_name") or source_config.get("url_or_path") or source_config.get("database") or ""
         result["source"] = {
             "system_name":   s_name,
-            "system_type":   "DATA_WAREHOUSE" if source_type in ["snowflake", "mysql", "postgres"] else "FILE_STORAGE",
-            "database_name": src_cfg.get("database") or src_cfg.get("dbname"),
-            "schema_name":   src_cfg.get("schema") or src_cfg.get("schema_name"),
+            "system_type":   "DATA_WAREHOUSE" if source_type in ["snowflake", "mysql"] else "FILE_STORAGE",
+            "database_name": source_config.get("database") or source_config.get("dbname"),
+            "schema_name":   source_config.get("schema") or source_config.get("schema_name"),
             "object_name":   s_obj,
-            "object_type":   "TABLE",
+            "object_type":   "TABLE" if source_type in ["snowflake", "mysql"] else "FILE",
             "row_count":     0,
             "column_count":  0,
             "size_bytes":    0,
@@ -260,9 +259,9 @@ def dbt_webhook(user_id: str):
         }
 
     # ── 3. Target adapter ────────────────────────────────────────────────────
+    target_type   = str(pipeline.get("target_type") or "")
+    target_config = pipeline.get("target_config", {})
     try:
-        target_type    = pipeline["target_type"]
-        target_config  = pipeline.get("target_config", {})
         target_adapter = TARGET_ADAPTERS.get(target_type)
         if target_adapter is None:
             raise ValueError(f"No target adapter registered for target_type='{target_type}'")
@@ -273,16 +272,15 @@ def dbt_webhook(user_id: str):
     except Exception as exc:
         logger.exception("Target fetch failed — job_id=%s", job_id)
         result["errors"].append({"component": "target", "error": str(exc)})
-        tgt_cfg = pipeline.get("target_config", {})
-        t_name = str(pipeline.get("target_type") or "Target").capitalize()
-        t_obj  = tgt_cfg.get("table") or tgt_cfg.get("table_name") or tgt_cfg.get("url_or_path") or tgt_cfg.get("database") or ""
+        t_name = target_type.capitalize() if target_type else "Target"
+        t_obj  = target_config.get("table") or target_config.get("table_name") or target_config.get("url_or_path") or target_config.get("database") or ""
         result["target"] = {
             "system_name":   t_name,
-            "system_type":   "DATA_WAREHOUSE" if target_type in ["snowflake", "mysql", "postgres"] else "FILE_STORAGE",
-            "database_name": tgt_cfg.get("database") or tgt_cfg.get("dbname"),
-            "schema_name":   tgt_cfg.get("schema") or tgt_cfg.get("schema_name"),
+            "system_type":   "DATA_WAREHOUSE" if target_type in ["snowflake", "mysql"] else "FILE_STORAGE",
+            "database_name": target_config.get("database") or target_config.get("dbname"),
+            "schema_name":   target_config.get("schema") or target_config.get("schema_name"),
             "object_name":   t_obj,
-            "object_type":   "TABLE",
+            "object_type":   "TABLE" if target_type in ["snowflake", "mysql"] else "FILE",
             "row_count":     0,
             "column_count":  0,
             "size_bytes":    0,

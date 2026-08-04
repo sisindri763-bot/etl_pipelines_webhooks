@@ -388,42 +388,27 @@ def find_pipeline(
     tool_account_id: Optional[str] = None,
     user_id: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
-    """Multi-stage enterprise lookup across multi-tenant registered pipelines."""
+    """Multi-stage dynamic lookup across multi-tenant registered pipelines."""
     pipelines = list_pipelines()
     if not pipelines:
         return None
 
-    target_jid = str(job_id or "").strip()
-    target_rid = str(run_id or "").strip()
-    target_aid = str(tool_account_id or "").strip()
-    target_uid = str(user_id or "").strip()
+    # Single pass lookup across all registered pipelines
+    for p in pipelines:
+        p_job_id = str(p.get("job_id") or "").strip()
+        p_acc_id = str(p.get("tool_account_id") or "").strip()
+        p_web_url = str(p.get("webhook_url") or "").strip()
 
-    # 1. Exact job_id match
-    if target_jid:
-        for p in pipelines:
-            if str(p.get("job_id") or "").strip() == target_jid:
-                return p
+        if job_id and p_job_id == str(job_id).strip():
+            return p
+        if run_id and p_job_id == str(run_id).strip():
+            return p
+        if tool_account_id and p_acc_id == str(tool_account_id).strip():
+            return p
+        if user_id and str(user_id).strip() in p_web_url:
+            return p
 
-    # 2. Exact run_id match
-    if target_rid:
-        for p in pipelines:
-            if str(p.get("job_id") or "").strip() == target_rid:
-                return p
-
-    # 3. Match by tool_account_id (dbt Account ID)
-    if target_aid:
-        for p in pipelines:
-            if str(p.get("tool_account_id") or "").strip() == target_aid:
-                return p
-
-    # 4. Match by user_id inside webhook_url
-    if target_uid:
-        for p in pipelines:
-            url = str(p.get("webhook_url") or "")
-            if target_uid and target_uid in url:
-                return p
-
-    # 5. Fallback: if single pipeline registered, use it
+    # Fallback: if only 1 pipeline registered in DB, use it
     if len(pipelines) == 1:
         return pipelines[0]
 

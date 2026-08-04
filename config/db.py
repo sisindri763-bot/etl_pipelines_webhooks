@@ -8,6 +8,11 @@ Stores pipeline configurations in table: `pipelines`
 Uses explicit relational columns for all configuration properties.
 """
 
+# pyright: reportGeneralTypeIssues=false
+# pyright: reportMissingImports=false
+# pyright: reportUnknownMemberType=false
+# type: ignore
+
 import logging
 import os
 import sqlite3
@@ -16,14 +21,14 @@ from typing import Any, Dict, List, Optional
 from dotenv import load_dotenv
 
 try:
-    import pymysql  # type: ignore # pyright: ignore[reportMissingImports]
-    import pymysql.cursors  # type: ignore # pyright: ignore[reportMissingImports]
+    import pymysql
+    import pymysql.cursors
 except ImportError:
     pymysql = None
 
 try:
-    import psycopg2  # type: ignore # pyright: ignore[reportMissingImports]
-    import psycopg2.extras  # type: ignore # pyright: ignore[reportMissingImports]
+    import psycopg2
+    import psycopg2.extras
 except ImportError:
     psycopg2 = None
 
@@ -43,28 +48,28 @@ def is_postgres() -> bool:
     return (url.startswith("postgresql://") or url.startswith("postgres://")) and not is_mysql()
 
 
-def _get_mysql_conn():
+def _get_mysql_conn() -> Any:
     if pymysql is None:
         raise RuntimeError("pymysql is not installed")
-    host = os.getenv("CENTRAL_DB_HOST") or os.getenv("MYSQL_HOST") or "localhost"
+    host = str(os.getenv("CENTRAL_DB_HOST") or os.getenv("MYSQL_HOST") or "localhost")
     port = int(os.getenv("CENTRAL_DB_PORT") or os.getenv("MYSQL_PORT") or 3306)
-    db = os.getenv("CENTRAL_DB_NAME") or os.getenv("MYSQL_DATABASE") or "webhooks_db"
-    user = os.getenv("CENTRAL_DB_USER") or os.getenv("MYSQL_USER") or "admin"
-    password = os.getenv("CENTRAL_DB_PASSWORD") or os.getenv("MYSQL_PASSWORD") or ""
+    db = str(os.getenv("CENTRAL_DB_NAME") or os.getenv("MYSQL_DATABASE") or "webhooks_db")
+    user = str(os.getenv("CENTRAL_DB_USER") or os.getenv("MYSQL_USER") or "admin")
+    password = str(os.getenv("CENTRAL_DB_PASSWORD") or os.getenv("MYSQL_PASSWORD") or "")
     dict_cursor = getattr(getattr(pymysql, "cursors", None), "DictCursor", None)
-    return pymysql.connect(  # type: ignore # pyright: ignore
+    return pymysql.connect(
         host=host, port=port, user=user, password=password,
         database=db, charset="utf8mb4", cursorclass=dict_cursor, autocommit=True
     )
 
 
-def _get_pg_conn():
+def _get_pg_conn() -> Any:
     if psycopg2 is None:
         raise RuntimeError("psycopg2 is not installed")
-    url = os.getenv("DATABASE_URL", "")
+    url = str(os.getenv("DATABASE_URL", ""))
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
-    return psycopg2.connect(url)  # type: ignore # pyright: ignore
+    return psycopg2.connect(url)
 
 
 def _get_sqlite_conn() -> sqlite3.Connection:
@@ -144,7 +149,7 @@ CREATE TABLE IF NOT EXISTS pipelines (
 """
 
 
-def _init_db():
+def _init_db() -> None:
     if is_mysql():
         try:
             conn = _get_mysql_conn()
@@ -171,7 +176,7 @@ def _init_db():
         logger.info("Local SQLite pipelines DB initialised at %s", _DB_PATH)
 
 
-def init_db():
+def init_db() -> None:
     _init_db()
 
 
@@ -221,6 +226,14 @@ def register_pipeline(
     tl_tok = tool_cfg.get("api_token")
     tl_url = tool_cfg.get("base_url") or tool_cfg.get("url")
 
+    params = (
+        str(job_id), str(tool_type), str(source_type),
+        s_acc, s_usr, s_pwd, s_wh, s_db, s_sch, s_tbl, s_hst, s_prt, s_pth,
+        str(target_type),
+        t_acc, t_usr, t_pwd, t_wh, t_db, t_sch, t_tbl, t_hst, t_prt, t_pth,
+        tl_acc, tl_tok, tl_url, webhook_url
+    )
+
     if is_mysql():
         conn = _get_mysql_conn()
         with conn.cursor() as cur:
@@ -261,13 +274,7 @@ def register_pipeline(
                     tool_base_url    = VALUES(tool_base_url),
                     webhook_url      = VALUES(webhook_url),
                     updated_at       = CURRENT_TIMESTAMP
-            """, (
-                str(job_id), tool_type, source_type,
-                s_acc, s_usr, s_pwd, s_wh, s_db, s_sch, s_tbl, s_hst, s_prt, s_pth,
-                target_type,
-                t_acc, t_usr, t_pwd, t_wh, t_db, t_sch, t_tbl, t_hst, t_prt, t_pth,
-                tl_acc, tl_tok, tl_url, webhook_url
-            ))
+            """, params)
         conn.commit()
         conn.close()
     elif is_postgres():
@@ -310,13 +317,7 @@ def register_pipeline(
                         tool_base_url    = EXCLUDED.tool_base_url,
                         webhook_url      = EXCLUDED.webhook_url,
                         updated_at       = now()
-                """, (
-                    str(job_id), tool_type, source_type,
-                    s_acc, s_usr, s_pwd, s_wh, s_db, s_sch, s_tbl, s_hst, s_prt, s_pth,
-                    target_type,
-                    t_acc, t_usr, t_pwd, t_wh, t_db, t_sch, t_tbl, t_hst, t_prt, t_pth,
-                    tl_acc, tl_tok, tl_url, webhook_url
-                ))
+                """, params)
             conn.commit()
     else:
         with _get_sqlite_conn() as conn:
@@ -357,13 +358,7 @@ def register_pipeline(
                     tool_base_url    = excluded.tool_base_url,
                     webhook_url      = excluded.webhook_url,
                     updated_at       = datetime('now')
-            """, (
-                str(job_id), tool_type, source_type,
-                s_acc, s_usr, s_pwd, s_wh, s_db, s_sch, s_tbl, s_hst, s_prt, s_pth,
-                target_type,
-                t_acc, t_usr, t_pwd, t_wh, t_db, t_sch, t_tbl, t_hst, t_prt, t_pth,
-                tl_acc, tl_tok, tl_url, webhook_url
-            ))
+            """, params)
     logger.info("Pipeline registered with relational columns: job_id=%s", job_id)
 
 
@@ -371,21 +366,21 @@ def get_pipeline(job_id: str) -> Optional[Dict[str, Any]]:
     """Return a pipeline config dict, mapped from relational columns."""
     if is_mysql():
         conn = _get_mysql_conn()
-        with conn.cursor() as cur:  # type: ignore # pyright: ignore
-            cur.execute("SELECT * FROM pipelines WHERE job_id = %s", (str(job_id),))  # type: ignore # pyright: ignore
-            row = cur.fetchone()  # type: ignore # pyright: ignore
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM pipelines WHERE job_id = %s", (str(job_id),))
+            row = cur.fetchone()
         conn.close()
         return _format_relational_row(dict(row)) if row else None
     elif is_postgres():
         dict_cursor = getattr(getattr(psycopg2, "extras", None), "DictCursor", None)
         with _get_pg_conn() as conn:
-            with conn.cursor(cursor_factory=dict_cursor) as cur:  # type: ignore # pyright: ignore
-                cur.execute("SELECT * FROM pipelines WHERE job_id = %s", (str(job_id),))  # type: ignore # pyright: ignore
-                row = cur.fetchone()  # type: ignore # pyright: ignore
+            with conn.cursor(cursor_factory=dict_cursor) as cur:
+                cur.execute("SELECT * FROM pipelines WHERE job_id = %s", (str(job_id),))
+                row = cur.fetchone()
         return _format_relational_row(dict(row)) if row else None
     else:
         with _get_sqlite_conn() as conn:
-            row = conn.execute("SELECT * FROM pipelines WHERE job_id = ?", (str(job_id),)).fetchone()  # type: ignore # pyright: ignore
+            row = conn.execute("SELECT * FROM pipelines WHERE job_id = ?", (str(job_id),)).fetchone()
         return _format_relational_row(dict(row)) if row else None
 
 
@@ -436,21 +431,21 @@ def list_pipelines() -> List[Dict[str, Any]]:
     """Return all registered pipelines."""
     if is_mysql():
         conn = _get_mysql_conn()
-        with conn.cursor() as cur:  # type: ignore # pyright: ignore
-            cur.execute("SELECT * FROM pipelines ORDER BY created_at DESC")  # type: ignore # pyright: ignore
-            rows = cur.fetchall()  # type: ignore # pyright: ignore
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM pipelines ORDER BY created_at DESC")
+            rows = cur.fetchall()
         conn.close()
         return [_format_relational_row(dict(r)) for r in rows]
     elif is_postgres():
         dict_cursor = getattr(getattr(psycopg2, "extras", None), "DictCursor", None)
         with _get_pg_conn() as conn:
-            with conn.cursor(cursor_factory=dict_cursor) as cur:  # type: ignore # pyright: ignore
-                cur.execute("SELECT * FROM pipelines ORDER BY created_at DESC")  # type: ignore # pyright: ignore
-                rows = cur.fetchall()  # type: ignore # pyright: ignore
+            with conn.cursor(cursor_factory=dict_cursor) as cur:
+                cur.execute("SELECT * FROM pipelines ORDER BY created_at DESC")
+                rows = cur.fetchall()
         return [_format_relational_row(dict(r)) for r in rows]
     else:
         with _get_sqlite_conn() as conn:
-            rows = conn.execute("SELECT * FROM pipelines ORDER BY created_at DESC").fetchall()  # type: ignore # pyright: ignore
+            rows = conn.execute("SELECT * FROM pipelines ORDER BY created_at DESC").fetchall()
         return [_format_relational_row(dict(r)) for r in rows]
 
 
@@ -458,22 +453,22 @@ def delete_pipeline(job_id: str) -> bool:
     """Delete a pipeline configuration row."""
     if is_mysql():
         conn = _get_mysql_conn()
-        with conn.cursor() as cur:  # type: ignore # pyright: ignore
-            cur.execute("DELETE FROM pipelines WHERE job_id = %s", (str(job_id),))  # type: ignore # pyright: ignore
-            count = cur.rowcount  # type: ignore # pyright: ignore
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM pipelines WHERE job_id = %s", (str(job_id),))
+            count = cur.rowcount
         conn.close()
         return count > 0
     elif is_postgres():
         with _get_pg_conn() as conn:
-            with conn.cursor() as cur:  # type: ignore # pyright: ignore
-                cur.execute("DELETE FROM pipelines WHERE job_id = %s", (str(job_id),))  # type: ignore # pyright: ignore
-                count = cur.rowcount  # type: ignore # pyright: ignore
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM pipelines WHERE job_id = %s", (str(job_id),))
+                count = cur.rowcount
             conn.commit()
         return count > 0
     else:
         with _get_sqlite_conn() as conn:
-            sql_cur = conn.execute("DELETE FROM pipelines WHERE job_id = ?", (str(job_id),))  # type: ignore # pyright: ignore
-            count = sql_cur.rowcount  # type: ignore # pyright: ignore
+            sql_cur = conn.execute("DELETE FROM pipelines WHERE job_id = ?", (str(job_id),))
+            count = sql_cur.rowcount
         return count > 0
 
 

@@ -8,11 +8,6 @@ Stores pipeline configurations in table: `pipelines`
 Uses explicit relational columns for all configuration properties.
 """
 
-# pyright: reportGeneralTypeIssues=false
-# pyright: reportMissingImports=false
-# pyright: reportUnknownMemberType=false
-# type: ignore
-
 import logging
 import os
 import sqlite3
@@ -56,7 +51,11 @@ def _get_mysql_conn() -> Any:
     db = str(os.getenv("CENTRAL_DB_NAME") or os.getenv("MYSQL_DATABASE") or "webhooks_db")
     user = str(os.getenv("CENTRAL_DB_USER") or os.getenv("MYSQL_USER") or "admin")
     password = str(os.getenv("CENTRAL_DB_PASSWORD") or os.getenv("MYSQL_PASSWORD") or "")
-    dict_cursor = getattr(getattr(pymysql, "cursors", None), "DictCursor", None)
+    
+    dict_cursor = None
+    if hasattr(pymysql, "cursors") and hasattr(pymysql.cursors, "DictCursor"):
+        dict_cursor = pymysql.cursors.DictCursor
+
     return pymysql.connect(
         host=host, port=port, user=user, password=password,
         database=db, charset="utf8mb4", cursorclass=dict_cursor, autocommit=True

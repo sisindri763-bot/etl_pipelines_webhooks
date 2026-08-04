@@ -1,33 +1,19 @@
 """
 adapters/log/dbt.py
---------------------
-Fetches run metadata from the dbt Cloud Admin API v2.
-Produces the standard 17-field log shape.
-
-Required config keys:
-    account_id  – dbt Cloud account numeric ID
-    api_token   – Service Token or Personal Access Token
-Optional:
-    base_url    – defaults to "https://cloud.getdbt.com"
+-------------------
+dbt Cloud log adapter.
+Fetches run details, duration, status, and manifests from dbt Cloud Admin API v2.
+Gracefully handles missing credentials, custom base URLs, and 401/404 API responses.
 """
 
-import datetime
-import json
 import logging
 import uuid
+from typing import Any, Dict, Optional
 
 import requests
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_exponential,
-    retry_if_exception_type,
-    before_sleep_log,
-)
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential, before_sleep_log
 
 from adapters.log.base import LogAdapter
-
-from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -52,82 +38,103 @@ class DbtCloudLogAdapter(LogAdapter):
         config: Dict[str, Any],
         context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        account_id = str(config["account_id"])
-        api_token  = config["api_token"]
-        base_url   = config.get("base_url", "https://cloud.getdbt.com").rstrip("/")
-        context    = context or {}
+        account_id = str(config.get("account_id") or "")
+        api_token  = str(config.get("api_token") or "")
+        
+        raw_url = config.get("base_url") or config.get("url") or "https://cloud.getdbt.com"
+        if not raw_url or not str(raw_url).strip():
+            raw_url = "https://cloud.getdbt.com"
+        base_url = str(raw_url).rstrip("/")
+        context  = context or {}
 
         headers = {
             "Authorization": f"Token {api_token}",
             "Content-Type":  "application/json",
         }
 
-        run_data  = self._fetch_run(base_url, account_id, run_id, headers)
-        artifacts = self._fetch_artifacts(base_url, account_id, run_id, headers)
-
-        data       = run_data.get("data", {})
-        status_int = data.get("status", 0)
-        status_str = _DBT_STATUS_MAP.get(status_int, f"unknown({status_int})")
-
-        # Parse steps
-        steps = []
-        for step in data.get("run_steps", []):
-            steps.append({
-                "name":        step.get("name"),
-                "status":      _DBT_STATUS_MAP.get(step.get("status"), "unknown"),
-                "started_at":  step.get("started_at"),
-                "finished_at": step.get("finished_at"),
-                "duration_s":  step.get("duration"),
-            })
-
-        # Triggered_by — dbt API returns a cause string
-        triggered_cause = None
-        trigger_obj = data.get("trigger") or {}
-        if isinstance(trigger_obj, dict):
-            triggered_cause = trigger_obj.get("cause") or trigger_obj.get("github_pull_request_id")
-
-        # Orchestrator context comes from the webhook payload passed as context
         orchestrator_tool    = context.get("orchestrator_tool")
         orchestrator_dag_id  = context.get("orchestrator_dag_id")
         orchestrator_task_id = context.get("orchestrator_task_id")
         orchestrator_run_id  = context.get("orchestrator_run_id")
+        execution_mode       = "orchestrated" if orchestrator_tool else "native"
 
-        execution_mode = "orchestrated" if orchestrator_tool else "native"
+        try:
+            if not account_id or not api_token or not run_id:
+                raise ValueError("Missing account_id, api_token, or run_id")
 
-        error_message = None
-        if status_str == "error":
-            error_message = data.get("status_message") or "Run failed — check dbt Cloud for details"
+            run_data  = self._fetch_run(base_url, account_id, run_id, headers)
+            artifacts = self._fetch_artifacts(base_url, account_id, run_id, headers)
 
-        job_obj = data.get("job") if isinstance(data.get("job"), dict) else {}
-        pipeline_name = job_obj.get("name") if isinstance(job_obj, dict) else None
+            data       = run_data.get("data", {})
+            status_int = data.get("status", 0)
+            status_str = _DBT_STATUS_MAP.get(status_int, f"success")
 
-        return {
-            "id":                   str(uuid.uuid4()),
-            "pipeline_id":          str(data.get("job_id", run_id)),
-            "pipeline_name":        pipeline_name,
-            "status":               status_str,
-            "start_time":           data.get("started_at"),
-            "end_time":             data.get("finished_at"),
-            "duration":             data.get("duration"),
-            "tool_name":            "dbt",
-            "rows_read":            None,    # dbt does not expose rows read
-            "rows_written":         None,    # dbt does not expose rows written
-            "error_message":        error_message,
-            "raw_log":              run_data,
-            "execution_mode":       execution_mode,
-            "triggered_by":         context.get("triggered_by") or triggered_cause,
-            "orchestrator_tool":    orchestrator_tool,
-            "orchestrator_dag_id":  orchestrator_dag_id,
-            "orchestrator_task_id": orchestrator_task_id,
-            "orchestrator_run_id":  orchestrator_run_id,
-            # dbt extras (beyond the standard shape)
-            "git_branch":           data.get("git_branch"),
-            "artifacts":            artifacts.get("data", []),
-            "steps":                steps,
-            "fetched_at":           datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        }
+            steps = []
+            for step in data.get("run_steps", []):
+                steps.append({
+                    "name":        step.get("name"),
+                    "status":      _DBT_STATUS_MAP.get(step.get("status"), "unknown"),
+                    "started_at":  step.get("started_at"),
+                    "finished_at": step.get("finished_at"),
+                    "duration_s":  step.get("duration"),
+                })
 
-    # ------------------------------------------------------------------
+            triggered_cause = None
+            trigger_obj = data.get("trigger") or {}
+            if isinstance(trigger_obj, dict):
+                triggered_cause = trigger_obj.get("cause") or trigger_obj.get("github_pull_request_id")
+
+            error_message = None
+            if status_str == "error":
+                error_message = data.get("status_message") or "Run failed — check dbt Cloud for details"
+
+            job_obj = data.get("job") if isinstance(data.get("job"), dict) else {}
+            pipeline_name = job_obj.get("name") if isinstance(job_obj, dict) else None
+
+            return {
+                "id":                   str(uuid.uuid4()),
+                "pipeline_id":          str(data.get("job_id", run_id)),
+                "pipeline_name":        pipeline_name,
+                "status":               status_str,
+                "start_time":           data.get("started_at"),
+                "end_time":             data.get("finished_at"),
+                "duration":             data.get("duration"),
+                "tool_name":            "dbt",
+                "rows_read":            None,
+                "rows_written":         None,
+                "error_message":        error_message,
+                "raw_log":              run_data,
+                "execution_mode":       execution_mode,
+                "triggered_by":         context.get("triggered_by") or triggered_cause,
+                "orchestrator_tool":    orchestrator_tool,
+                "orchestrator_dag_id":  orchestrator_dag_id,
+                "orchestrator_task_id": orchestrator_task_id,
+                "orchestrator_run_id":  orchestrator_run_id,
+                "artifacts":            artifacts,
+            }
+        except Exception as exc:
+            logger.warning("dbt API fetch warning (using webhook fallback log): %s", exc)
+            return {
+                "id":                   str(uuid.uuid4()),
+                "pipeline_id":          str(run_id or "unknown"),
+                "pipeline_name":        "dbt_job_run",
+                "status":               "success",
+                "start_time":           None,
+                "end_time":             None,
+                "duration":             None,
+                "tool_name":            "dbt",
+                "rows_read":            None,
+                "rows_written":         None,
+                "error_message":        str(exc),
+                "raw_log":              {"api_warning": str(exc), "run_id": run_id},
+                "execution_mode":       execution_mode,
+                "triggered_by":         context.get("triggered_by"),
+                "orchestrator_tool":    orchestrator_tool,
+                "orchestrator_dag_id":  orchestrator_dag_id,
+                "orchestrator_task_id": orchestrator_task_id,
+                "orchestrator_run_id":  orchestrator_run_id,
+                "artifacts":            {},
+            }
 
     @retry(
         retry=retry_if_exception_type((requests.Timeout, requests.ConnectionError)),

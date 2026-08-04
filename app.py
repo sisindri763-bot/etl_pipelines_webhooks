@@ -182,13 +182,16 @@ def dbt_webhook(user_id: str):
 
     logger.info("Webhook received — user_id=%s job_id=%s run_id=%s", user_id, job_id, run_id)
 
-    # Look up pipeline config
+    # Look up pipeline config by job_id or run_id fallback
     pipeline = get_pipeline(job_id)
+    if pipeline is None and run_id:
+        pipeline = get_pipeline(run_id)
+
     if pipeline is None:
-        logger.warning("No config for job_id=%s — returning 200 to avoid dbt retries", job_id)
+        logger.warning("No config for job_id=%s run_id=%s — returning 200 to avoid dbt retries", job_id, run_id)
         return jsonify({
             "status":  "skipped",
-            "reason":  f"No pipeline config registered for job_id={job_id}",
+            "reason":  f"No pipeline config registered for job_id={job_id} or run_id={run_id}",
             "job_id":  job_id,
             "run_id":  run_id,
         }), 200

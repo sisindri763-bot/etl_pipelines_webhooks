@@ -243,8 +243,8 @@ def dbt_webhook(user_id: str):
         logger.exception("Source fetch failed — job_id=%s", job_id)
         result["errors"].append({"component": "source", "error": str(exc)})
         src_cfg = pipeline.get("source_config", {})
-        s_name = str(pipeline.get("source_type", "snowflake")).capitalize()
-        s_obj  = src_cfg.get("table") or src_cfg.get("table_name") or src_cfg.get("url_or_path") or "UNKNOWN_TABLE"
+        s_name = str(pipeline.get("source_type") or "Source").capitalize()
+        s_obj  = src_cfg.get("table") or src_cfg.get("table_name") or src_cfg.get("url_or_path") or src_cfg.get("database") or ""
         result["source"] = {
             "system_name":   s_name,
             "system_type":   "DATA_WAREHOUSE" if source_type in ["snowflake", "mysql", "postgres"] else "FILE_STORAGE",
@@ -274,8 +274,8 @@ def dbt_webhook(user_id: str):
         logger.exception("Target fetch failed — job_id=%s", job_id)
         result["errors"].append({"component": "target", "error": str(exc)})
         tgt_cfg = pipeline.get("target_config", {})
-        t_name = str(pipeline.get("target_type", "snowflake")).capitalize()
-        t_obj  = tgt_cfg.get("table") or tgt_cfg.get("table_name") or tgt_cfg.get("url_or_path") or "UNKNOWN_TABLE"
+        t_name = str(pipeline.get("target_type") or "Target").capitalize()
+        t_obj  = tgt_cfg.get("table") or tgt_cfg.get("table_name") or tgt_cfg.get("url_or_path") or tgt_cfg.get("database") or ""
         result["target"] = {
             "system_name":   t_name,
             "system_type":   "DATA_WAREHOUSE" if target_type in ["snowflake", "mysql", "postgres"] else "FILE_STORAGE",

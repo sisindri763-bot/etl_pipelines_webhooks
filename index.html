@@ -328,6 +328,7 @@
                 <option value="snowflake" selected>Snowflake (Data Warehouse)</option>
                 <option value="mysql">MySQL Database</option>
                 <option value="csv">CSV File</option>
+                <option value="excel">Excel Spreadsheet</option>
               </select>
             </div>
             <div id="sourceFields"></div>
@@ -342,6 +343,7 @@
                 <option value="snowflake" selected>Snowflake (Data Warehouse)</option>
                 <option value="mysql">MySQL Database</option>
                 <option value="csv">CSV File</option>
+                <option value="excel">Excel Spreadsheet</option>
               </select>
             </div>
             <div id="targetFields"></div>
@@ -508,8 +510,10 @@
             <div class="form-group"><label>Table *</label><input type="text" id="src_my_table" placeholder="e.g. raw_table" required></div>
           </div>
         `;
+      } else if (type === 'excel') {
+        container.innerHTML = `<div class="form-group"><label>Excel File Path or URL *</label><input type="text" id="src_path" placeholder="e.g. /path/to/source.xlsx" required></div>`;
       } else {
-        container.innerHTML = `<div class="form-group"><label>Source File Path or URL *</label><input type="text" id="src_path" placeholder="e.g. /path/to/source.csv" required></div>`;
+        container.innerHTML = `<div class="form-group"><label>CSV File Path or URL *</label><input type="text" id="src_path" placeholder="e.g. /path/to/source.csv" required></div>`;
       }
     }
 
@@ -547,8 +551,10 @@
             <div class="form-group"><label>Table *</label><input type="text" id="tgt_my_table" placeholder="e.g. target_table" required></div>
           </div>
         `;
+      } else if (type === 'excel') {
+        container.innerHTML = `<div class="form-group"><label>Excel File Path or URL *</label><input type="text" id="tgt_path" placeholder="e.g. /path/to/target.xlsx" required></div>`;
       } else {
-        container.innerHTML = `<div class="form-group"><label>Target File Path or URL *</label><input type="text" id="tgt_path" placeholder="e.g. /path/to/target.csv" required></div>`;
+        container.innerHTML = `<div class="form-group"><label>CSV File Path or URL *</label><input type="text" id="tgt_path" placeholder="e.g. /path/to/target.csv" required></div>`;
       }
     }
 

@@ -492,7 +492,7 @@
           <div class="form-row">
             <div class="form-group"><label>Database *</label><input type="text" id="src_sf_db" placeholder="e.g. RAW_DB" required></div>
             <div class="form-group"><label>Schema *</label><input type="text" id="src_sf_schema" placeholder="e.g. RAW" required></div>
-            <div class="form-group"><label>Table *</label><input type="text" id="src_sf_table" placeholder="e.g. ORDERS" required></div>
+            <div class="form-group"><label>Table (Optional)</label><input type="text" id="src_sf_table" placeholder="e.g. ORDERS (or blank for ALL)"></div>
           </div>
         `;
       } else if (type === 'mysql') {
@@ -507,7 +507,7 @@
           </div>
           <div class="form-row">
             <div class="form-group"><label>Database *</label><input type="text" id="src_my_db" placeholder="e.g. raw_db" required></div>
-            <div class="form-group"><label>Table *</label><input type="text" id="src_my_table" placeholder="e.g. raw_table" required></div>
+            <div class="form-group"><label>Table (Optional)</label><input type="text" id="src_my_table" placeholder="e.g. raw_table (or blank for ALL)"></div>
           </div>
         `;
       } else if (type === 'excel') {
@@ -533,7 +533,7 @@
           <div class="form-row">
             <div class="form-group"><label>Database *</label><input type="text" id="tgt_sf_db" placeholder="e.g. ANALYTICS_DB" required></div>
             <div class="form-group"><label>Schema *</label><input type="text" id="tgt_sf_schema" placeholder="e.g. STAGING" required></div>
-            <div class="form-group"><label>Table *</label><input type="text" id="tgt_sf_table" placeholder="e.g. STG_ORDERS" required></div>
+            <div class="form-group"><label>Table (Optional)</label><input type="text" id="tgt_sf_table" placeholder="e.g. STG_ORDERS (or blank for ALL)"></div>
           </div>
         `;
       } else if (type === 'mysql') {
@@ -548,7 +548,7 @@
           </div>
           <div class="form-row">
             <div class="form-group"><label>Database *</label><input type="text" id="tgt_my_db" placeholder="e.g. analytics_db" required></div>
-            <div class="form-group"><label>Table *</label><input type="text" id="tgt_my_table" placeholder="e.g. target_table" required></div>
+            <div class="form-group"><label>Table (Optional)</label><input type="text" id="tgt_my_table" placeholder="e.g. target_table (or blank for ALL)"></div>
           </div>
         `;
       } else if (type === 'excel') {

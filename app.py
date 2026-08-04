@@ -242,6 +242,22 @@ def dbt_webhook(user_id: str):
     except Exception as exc:
         logger.exception("Source fetch failed — job_id=%s", job_id)
         result["errors"].append({"component": "source", "error": str(exc)})
+        src_cfg = pipeline.get("source_config", {})
+        s_name = str(pipeline.get("source_type", "snowflake")).capitalize()
+        s_obj  = src_cfg.get("table") or src_cfg.get("table_name") or src_cfg.get("url_or_path") or "UNKNOWN_TABLE"
+        result["source"] = {
+            "system_name":   s_name,
+            "system_type":   "DATA_WAREHOUSE" if source_type in ["snowflake", "mysql", "postgres"] else "FILE_STORAGE",
+            "database_name": src_cfg.get("database") or src_cfg.get("dbname"),
+            "schema_name":   src_cfg.get("schema") or src_cfg.get("schema_name"),
+            "object_name":   s_obj,
+            "object_type":   "TABLE",
+            "row_count":     0,
+            "column_count":  0,
+            "size_bytes":    0,
+            "columns":       [],
+            "last_updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
 
     # ── 3. Target adapter ────────────────────────────────────────────────────
     try:
@@ -257,6 +273,22 @@ def dbt_webhook(user_id: str):
     except Exception as exc:
         logger.exception("Target fetch failed — job_id=%s", job_id)
         result["errors"].append({"component": "target", "error": str(exc)})
+        tgt_cfg = pipeline.get("target_config", {})
+        t_name = str(pipeline.get("target_type", "snowflake")).capitalize()
+        t_obj  = tgt_cfg.get("table") or tgt_cfg.get("table_name") or tgt_cfg.get("url_or_path") or "UNKNOWN_TABLE"
+        result["target"] = {
+            "system_name":   t_name,
+            "system_type":   "DATA_WAREHOUSE" if target_type in ["snowflake", "mysql", "postgres"] else "FILE_STORAGE",
+            "database_name": tgt_cfg.get("database") or tgt_cfg.get("dbname"),
+            "schema_name":   tgt_cfg.get("schema") or tgt_cfg.get("schema_name"),
+            "object_name":   t_obj,
+            "object_type":   "TABLE",
+            "row_count":     0,
+            "column_count":  0,
+            "size_bytes":    0,
+            "columns":       [],
+            "last_updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
 
     # ── Final status ─────────────────────────────────────────────────────────
     n_errors = len(result["errors"])

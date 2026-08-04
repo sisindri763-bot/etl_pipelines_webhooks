@@ -175,6 +175,15 @@ def dbt_webhook(user_id: str):
         or ""
     )
 
+    # Extract orchestrator context — Airflow or dbt Cloud webhook metadata
+    orchestrator_context: Dict[str, Any] = {
+        "triggered_by":         payload.get("triggered_by") or payload.get("triggeredBy"),
+        "orchestrator_tool":    payload.get("orchestrator_tool") or payload.get("orchestratorTool"),
+        "orchestrator_dag_id":  payload.get("orchestrator_dag_id") or payload.get("orchestratorDagId"),
+        "orchestrator_task_id": payload.get("orchestrator_task_id") or payload.get("orchestratorTaskId"),
+        "orchestrator_run_id":  payload.get("orchestrator_run_id") or payload.get("orchestratorRunId"),
+    }
+
     logger.info("Webhook received — user_id=%s job_id=%s run_id=%s account_id=%s", user_id, job_id, run_id, tool_account_id)
 
     # Enterprise multi-stage pipeline lookup

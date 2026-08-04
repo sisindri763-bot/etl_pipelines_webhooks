@@ -399,13 +399,13 @@ def find_pipeline(
         p_acc_id = str(p.get("tool_account_id") or "").strip()
         p_web_url = str(p.get("webhook_url") or "").strip()
 
-        if job_id and p_job_id == str(job_id).strip():
+        if job_id and p_job_id == job_id.strip():
             return p
-        if run_id and p_job_id == str(run_id).strip():
+        if run_id and p_job_id == run_id.strip():
             return p
-        if tool_account_id and p_acc_id == str(tool_account_id).strip():
+        if tool_account_id and p_acc_id == tool_account_id.strip():
             return p
-        if user_id and str(user_id).strip() in p_web_url:
+        if user_id and user_id.strip() in p_web_url:
             return p
 
     # Fallback: if only 1 pipeline registered in DB, use it

@@ -507,6 +507,7 @@
           </div>
           <div class="form-row">
             <div class="form-group"><label>Database *</label><input type="text" id="src_my_db" placeholder="e.g. raw_db" required></div>
+            <div class="form-group"><label>Schema (Optional)</label><input type="text" id="src_my_schema" placeholder="e.g. public (or blank)"></div>
             <div class="form-group"><label>Table (Optional)</label><input type="text" id="src_my_table" placeholder="e.g. raw_table (or blank for ALL)"></div>
           </div>
         `;
@@ -548,6 +549,7 @@
           </div>
           <div class="form-row">
             <div class="form-group"><label>Database *</label><input type="text" id="tgt_my_db" placeholder="e.g. analytics_db" required></div>
+            <div class="form-group"><label>Schema (Optional)</label><input type="text" id="tgt_my_schema" placeholder="e.g. staging (or blank)"></div>
             <div class="form-group"><label>Table (Optional)</label><input type="text" id="tgt_my_table" placeholder="e.g. target_table (or blank for ALL)"></div>
           </div>
         `;
@@ -590,6 +592,7 @@
           username: document.getElementById('src_my_user').value,
           password: document.getElementById('src_my_pass').value,
           database: document.getElementById('src_my_db').value,
+          schema: document.getElementById('src_my_schema').value,
           table_name: document.getElementById('src_my_table').value,
         };
       } else {
@@ -616,6 +619,7 @@
           username: document.getElementById('tgt_my_user').value,
           password: document.getElementById('tgt_my_pass').value,
           database: document.getElementById('tgt_my_db').value,
+          schema: document.getElementById('tgt_my_schema').value,
           table_name: document.getElementById('tgt_my_table').value,
         };
       } else {

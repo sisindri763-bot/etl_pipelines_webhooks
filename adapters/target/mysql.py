@@ -1,12 +1,12 @@
 """
 adapters/target/mysql.py
 -------------------------
-MySQL / MariaDB target adapter — role="TARGET".
+MySQL target adapter — supports single table, comma-separated table lists, or schema-wide table discovery.
 """
 
 import datetime
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 from tenacity import retry, stop_after_attempt, wait_exponential, before_sleep_log
 
@@ -26,23 +26,23 @@ class MySQLTargetAdapter(DataAdapter):
 
     @retry(
         stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
+        wait=wait_exponential(multiplier=1, min=3, max=15),
         before_sleep=before_sleep_log(logger, logging.WARNING),
         reraise=True,
     )
     def fetch_snapshot(self, config: Dict[str, Any], run_id: Optional[str] = None) -> Dict[str, Any]:
         if pymysql is None:
-            return _unavailable("mysql", "target", "pymysql not installed", run_id, config)
+            return _unavailable("MySQL", self.role, "pymysql not installed", run_id, config)
 
-        host     = config["host"]
-        port     = int(config.get("port", 3306))
-        database = config["database"]
-        table    = config["table"]
-        schema   = config.get("schema_name", database)
-        username = config["username"]
-        password = config["password"]
-        sample_n = int(config.get("sample_rows", 10))
-        charset  = config.get("charset", "utf8mb4")
+        host      = config["host"]
+        port      = int(config.get("port", 3306))
+        database  = config["database"]
+        table_raw = str(config.get("table") or config.get("table_name") or "").strip()
+        schema    = config.get("schema") or config.get("schema_name") or database
+        username  = config.get("username") or config.get("user") or ""
+        password  = config["password"]
+        sample_n  = int(config.get("sample_rows", 10))
+        charset   = config.get("charset", "utf8mb4")
 
         cursor_cls = getattr(getattr(pymysql, "cursors", None), "DictCursor", None)
 
@@ -54,26 +54,76 @@ class MySQLTargetAdapter(DataAdapter):
         )
         try:
             with conn.cursor() as cur:
-                cur.execute(f"SELECT COUNT(*) AS cnt FROM `{table}`")
-                res = cur.fetchone()
-                row_count = res["cnt"] if isinstance(res, dict) and "cnt" in res else 0
+                # Discover table list
+                if not table_raw or table_raw == "*":
+                    cur.execute("""
+                        SELECT TABLE_NAME
+                        FROM information_schema.tables
+                        WHERE table_schema = %s AND table_type = 'BASE TABLE'
+                    """, (database,))
+                    tbl_rows = cur.fetchall() or []
+                    table_list = [r["TABLE_NAME"] for r in tbl_rows if isinstance(r, dict) and r.get("TABLE_NAME")]
+                elif "," in table_raw:
+                    table_list = [t.strip() for t in table_raw.split(",") if t.strip()]
+                else:
+                    table_list = [table_raw]
 
-                cur.execute(f"SELECT * FROM `{table}` LIMIT {sample_n}")
-                rows    = cur.fetchall()
-                columns = [desc[0] for desc in cur.description] if cur.description else []
-
-                cur.execute("""
-                    SELECT data_length + index_length AS size_bytes, update_time
-                    FROM information_schema.tables
-                    WHERE table_schema = %s AND table_name = %s
-                """, (schema, table))
-                meta_obj = cur.fetchone()
-                meta_dict = meta_obj if isinstance(meta_obj, dict) else {}
-                size_bytes      = meta_dict.get("size_bytes")
+                total_rows = 0
+                size_bytes = 0
                 last_updated_at = None
-                raw_update_time = meta_dict.get("update_time")
-                if raw_update_time:
-                    last_updated_at = raw_update_time.isoformat() if hasattr(raw_update_time, "isoformat") else str(raw_update_time)
+                all_columns: List[str] = []
+                sample_data: List[Dict[str, Any]] = []
+                object_name = ", ".join(table_list) if table_list else (table_raw or database)
+
+                if table_list:
+                    in_clause = ", ".join(["%s"] * len(table_list))
+                    query_tables = f"""
+                        SELECT TABLE_NAME, TABLE_ROWS, DATA_LENGTH + INDEX_LENGTH AS BYTES, UPDATE_TIME
+                        FROM information_schema.tables
+                        WHERE table_schema = %s AND table_name IN ({in_clause})
+                    """
+                    params_tbl = [database] + table_list
+                    cur.execute(query_tables, params_tbl)
+                    meta_rows = cur.fetchall() or []
+
+                    for m in meta_rows:
+                        if isinstance(m, dict):
+                            rc = m.get("TABLE_ROWS")
+                            if rc is not None:
+                                total_rows += int(rc)
+                            b = m.get("BYTES")
+                            if b is not None:
+                                size_bytes += int(b)
+                            ut = m.get("UPDATE_TIME")
+                            if ut and not last_updated_at:
+                                last_updated_at = ut.isoformat() if hasattr(ut, "isoformat") else str(ut)
+
+                    query_cols = f"""
+                        SELECT TABLE_NAME, COLUMN_NAME
+                        FROM information_schema.columns
+                        WHERE table_schema = %s AND table_name IN ({in_clause})
+                        ORDER BY TABLE_NAME, ORDINAL_POSITION
+                    """
+                    cur.execute(query_cols, params_tbl)
+                    col_rows = cur.fetchall() or []
+                    for c in col_rows:
+                        if isinstance(c, dict) and c.get("COLUMN_NAME"):
+                            col_name = str(c["COLUMN_NAME"])
+                            if col_name not in all_columns:
+                                all_columns.append(col_name)
+
+                    # Sample rows from first table
+                    if table_list:
+                        try:
+                            t_sample = table_list[0]
+                            cur.execute(f"SELECT * FROM `{t_sample}` LIMIT {sample_n}")
+                            sample_rows = cur.fetchall() or []
+                            sample_data = [dict(r) for r in sample_rows]
+                            if not all_columns and cur.description:
+                                all_columns = [desc[0] for desc in cur.description]
+                        except Exception:
+                            pass
+
         finally:
             conn.close()
 
@@ -84,30 +134,31 @@ class MySQLTargetAdapter(DataAdapter):
             "system_type":     "DATABASE",
             "database_name":   database,
             "schema_name":     schema,
-            "object_name":     table,
+            "object_name":     object_name,
             "object_type":     "TABLE",
-            "row_count":       row_count,
-            "column_count":    len(columns),
-            "size_bytes":      int(size_bytes) if size_bytes else None,
-            "last_updated_at": last_updated_at,
+            "row_count":       total_rows,
+            "column_count":    len(all_columns),
+            "size_bytes":      size_bytes if size_bytes > 0 else None,
+            "last_updated_at": last_updated_at or datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "observed_at":     datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "columns":         columns,
-            "sample":          [dict(r) for r in rows],
+            "columns":         all_columns,
+            "sample":          sample_data,
         }
 
 
-def _unavailable(system, role, reason, run_id, config):
+def _unavailable(system: str, role: str, reason: str, run_id: Optional[str], config: Dict[str, Any]) -> Dict[str, Any]:
+    obj = config.get("table") or config.get("table_name") or config.get("database") or "UNKNOWN_TABLE"
     return {
         "run_id":          run_id,
         "asset_role":      "TARGET",
         "system_name":     system,
         "system_type":     "DATABASE",
         "database_name":   config.get("database"),
-        "schema_name":     config.get("schema_name", config.get("database")),
-        "object_name":     config.get("table", "unknown"),
+        "schema_name":     config.get("schema") or config.get("database"),
+        "object_name":     obj,
         "object_type":     "TABLE",
-        "row_count":       -1,
-        "column_count":    -1,
+        "row_count":       0,
+        "column_count":    0,
         "size_bytes":      None,
         "last_updated_at": None,
         "observed_at":     datetime.datetime.now(datetime.timezone.utc).isoformat(),

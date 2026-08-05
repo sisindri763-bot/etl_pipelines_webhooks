@@ -393,40 +393,20 @@ def find_pipeline(
     if not pipelines:
         return None
 
-    target_jid = str(job_id or "").strip()
-    target_rid = str(run_id or "").strip()
-    target_aid = str(tool_account_id or "").strip()
-    target_uid = str(user_id or "").strip()
+    for p in pipelines:
+        p_jid = str(p.get("job_id") or "").strip()
+        p_aid = str(p.get("tool_account_id") or "").strip()
+        p_url = str(p.get("webhook_url") or "").strip()
 
-    # 1. Match by job_id
-    if target_jid:
-        for p in pipelines:
-            p_jid = str(p.get("job_id") or "").strip()
-            if p_jid and p_jid == target_jid:
-                return p
+        if job_id and p_jid == job_id.strip():
+            return p
+        if run_id and p_jid == run_id.strip():
+            return p
+        if tool_account_id and p_aid == tool_account_id.strip():
+            return p
+        if user_id and user_id.strip() in p_url:
+            return p
 
-    # 2. Match by run_id
-    if target_rid:
-        for p in pipelines:
-            p_jid = str(p.get("job_id") or "").strip()
-            if p_jid and p_jid == target_rid:
-                return p
-
-    # 3. Match by dbt Account ID (tool_account_id)
-    if target_aid:
-        for p in pipelines:
-            p_aid = str(p.get("tool_account_id") or "").strip()
-            if p_aid and p_aid == target_aid:
-                return p
-
-    # 4. Match by user_id inside registered webhook_url or user_id
-    if target_uid:
-        for p in pipelines:
-            p_url = str(p.get("webhook_url") or "").strip()
-            if target_uid and target_uid in p_url:
-                return p
-
-    # 5. Ultimate Fallback: return registered pipeline so no run is ever skipped
     return pipelines[0]
 
 

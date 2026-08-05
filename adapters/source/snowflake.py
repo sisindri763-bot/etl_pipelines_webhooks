@@ -1,19 +1,13 @@
 """
 adapters/source/snowflake.py
 -----------------------------
-Snowflake source adapter.
-Produces the standard 15-field asset shape including size_bytes
-from INFORMATION_SCHEMA.TABLES.
-
-Required config keys:
-    account, warehouse, database, schema, table, username, password
-Optional:
-    role, sample_rows
+Snowflake source adapter — supports single table, comma-separated tables, or schema-wide discovery.
+Produces standard 15-field asset shape with exact row counts, column counts, column names, and size bytes.
 """
 
 import datetime
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 from tenacity import retry, stop_after_attempt, wait_exponential, before_sleep_log
 
@@ -40,15 +34,15 @@ class SnowflakeSourceAdapter(DataAdapter):
     )
     def fetch_snapshot(self, config: Dict[str, Any], run_id: Optional[str] = None) -> Dict[str, Any]:
         if snowflake is None or not hasattr(snowflake, "connector"):
-            return _unavailable("snowflake", self.role, "snowflake-connector-python not installed", run_id, config)
+            return _unavailable("Snowflake", self.role, "snowflake-connector-python not installed", run_id, config)
 
-        account   = config["account"]
-        warehouse = config["warehouse"]
-        database  = config["database"]
-        schema    = config.get("schema", "PUBLIC")
-        table     = config["table"]
+        account   = config.get("account", "")
+        warehouse = config.get("warehouse", "")
+        database  = config.get("database", "")
+        schema    = config.get("schema") or "PUBLIC"
+        table_raw = str(config.get("table") or config.get("table_name") or "").strip()
         username  = config.get("username") or config.get("user") or ""
-        password  = config["password"]
+        password  = config.get("password", "")
         sf_role   = config.get("role")
         sample_n  = int(config.get("sample_rows", 10))
 
@@ -64,36 +58,93 @@ class SnowflakeSourceAdapter(DataAdapter):
         try:
             cur = conn.cursor(cursor_class=DictCursor)
 
-            # Exact row count
-            cur.execute(f'SELECT COUNT(*) AS CNT FROM "{database}"."{schema}"."{table}"')
-            res = cur.fetchone()
-            row_count = 0
-            if isinstance(res, dict):
-                row_count = int(res.get("CNT") or res.get("cnt") or 0)
-            elif isinstance(res, (tuple, list)) and len(res) > 0:
-                row_count = int(res[0])
+            # Discover table list
+            if not table_raw or table_raw == "*":
+                cur.execute("""
+                    SELECT TABLE_NAME
+                    FROM information_schema.tables
+                    WHERE table_catalog = %s
+                      AND table_schema  = %s
+                      AND table_type    = 'BASE TABLE'
+                """, (database.upper(), schema.upper()))
+                tbl_rows = cur.fetchall() or []
+                table_list = [r["TABLE_NAME"] for r in tbl_rows if isinstance(r, dict) and r.get("TABLE_NAME")]
+            elif "," in table_raw:
+                table_list = [t.strip() for t in table_raw.split(",") if t.strip()]
+            else:
+                table_list = [table_raw]
 
-            # Sample rows
-            cur.execute(f'SELECT * FROM "{database}"."{schema}"."{table}" LIMIT {sample_n}')
-            rows    = cur.fetchall()
-            columns = [desc.name for desc in cur.description] if cur.description else []
-
-            # Size + last updated from INFORMATION_SCHEMA
-            cur.execute("""
-                SELECT
-                    BYTES,
-                    LAST_ALTERED
-                FROM information_schema.tables
-                WHERE table_catalog = %s
-                  AND table_schema  = %s
-                  AND table_name    = %s
-            """, (database.upper(), schema.upper(), table.upper()))
-            meta = cur.fetchone() or {}
-            size_bytes      = meta.get("BYTES")
+            total_rows = 0
+            size_bytes = 0
             last_updated_at = None
-            raw_altered     = meta.get("LAST_ALTERED")
-            if raw_altered:
-                last_updated_at = raw_altered.isoformat() if hasattr(raw_altered, "isoformat") else str(raw_altered)
+            all_columns: List[str] = []
+            sample_data: List[Dict[str, Any]] = []
+            object_name = ", ".join(table_list) if table_list else (table_raw or schema)
+
+            if table_list:
+                in_clause = ", ".join(["%s"] * len(table_list))
+                query_tables = f"""
+                    SELECT TABLE_NAME, ROW_COUNT, BYTES, LAST_ALTERED
+                    FROM information_schema.tables
+                    WHERE table_catalog = %s
+                      AND table_schema  = %s
+                      AND UPPER(table_name) IN ({in_clause})
+                """
+                params_tbl = [database.upper(), schema.upper()] + [t.upper() for t in table_list]
+                cur.execute(query_tables, params_tbl)
+                meta_rows = cur.fetchall() or []
+
+                for m in meta_rows:
+                    if isinstance(m, dict):
+                        rc = m.get("ROW_COUNT")
+                        if rc is not None:
+                            total_rows += int(rc)
+                        b = m.get("BYTES")
+                        if b is not None:
+                            size_bytes += int(b)
+                        alt = m.get("LAST_ALTERED")
+                        if alt and not last_updated_at:
+                            last_updated_at = alt.isoformat() if hasattr(alt, "isoformat") else str(alt)
+
+                query_cols = f"""
+                    SELECT TABLE_NAME, COLUMN_NAME
+                    FROM information_schema.columns
+                    WHERE table_catalog = %s
+                      AND table_schema  = %s
+                      AND UPPER(table_name) IN ({in_clause})
+                    ORDER BY TABLE_NAME, ORDINAL_POSITION
+                """
+                cur.execute(query_cols, params_tbl)
+                col_rows = cur.fetchall() or []
+                for c in col_rows:
+                    if isinstance(c, dict) and c.get("COLUMN_NAME"):
+                        col_name = str(c["COLUMN_NAME"])
+                        if col_name not in all_columns:
+                            all_columns.append(col_name)
+
+                # Fallback for exact count if total_rows is 0 and only 1 table specified
+                if total_rows == 0 and len(table_list) == 1:
+                    try:
+                        t_single = table_list[0]
+                        cur.execute(f'SELECT COUNT(*) AS CNT FROM "{database}"."{schema}"."{t_single}"')
+                        res = cur.fetchone()
+                        if isinstance(res, dict):
+                            total_rows = int(res.get("CNT") or res.get("cnt") or 0)
+                    except Exception:
+                        pass
+
+                # Sample data from first table
+                if table_list:
+                    try:
+                        t_sample = table_list[0]
+                        cur.execute(f'SELECT * FROM "{database}"."{schema}"."{t_sample}" LIMIT {sample_n}')
+                        sample_rows = cur.fetchall() or []
+                        sample_data = [dict(r) for r in sample_rows]
+                        if not all_columns and cur.description:
+                            all_columns = [desc.name for desc in cur.description]
+                    except Exception:
+                        pass
+
         finally:
             conn.close()
 
@@ -104,19 +155,20 @@ class SnowflakeSourceAdapter(DataAdapter):
             "system_type":     "DATA_WAREHOUSE",
             "database_name":   database,
             "schema_name":     schema,
-            "object_name":     table,
+            "object_name":     object_name,
             "object_type":     "TABLE",
-            "row_count":       row_count,
-            "column_count":    len(columns),
-            "size_bytes":      int(size_bytes) if size_bytes else None,
-            "last_updated_at": last_updated_at,
+            "row_count":       total_rows,
+            "column_count":    len(all_columns),
+            "size_bytes":      size_bytes if size_bytes > 0 else None,
+            "last_updated_at": last_updated_at or datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "observed_at":     datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "columns":         columns,
-            "sample":          [dict(r) for r in rows],
+            "columns":         all_columns,
+            "sample":          sample_data,
         }
 
 
-def _unavailable(system, role, reason, run_id, config):
+def _unavailable(system: str, role: str, reason: str, run_id: Optional[str], config: Dict[str, Any]) -> Dict[str, Any]:
+    obj = config.get("table") or config.get("table_name") or config.get("schema") or "UNKNOWN_TABLE"
     return {
         "run_id":          run_id,
         "asset_role":      role.upper(),
@@ -124,10 +176,10 @@ def _unavailable(system, role, reason, run_id, config):
         "system_type":     "DATA_WAREHOUSE",
         "database_name":   config.get("database"),
         "schema_name":     config.get("schema", "PUBLIC"),
-        "object_name":     config.get("table", "unknown"),
+        "object_name":     obj,
         "object_type":     "TABLE",
-        "row_count":       -1,
-        "column_count":    -1,
+        "row_count":       0,
+        "column_count":    0,
         "size_bytes":      None,
         "last_updated_at": None,
         "observed_at":     datetime.datetime.now(datetime.timezone.utc).isoformat(),

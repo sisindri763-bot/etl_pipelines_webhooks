@@ -59,14 +59,13 @@ class SnowflakeSourceAdapter(DataAdapter):
         try:
             cur = conn.cursor(cursor_class=DictCursor)
 
-            # Discover table list
+            # Discover table list (both BASE TABLE and VIEW)
             if not table_raw or table_raw == "*":
                 cur.execute("""
                     SELECT TABLE_NAME
                     FROM information_schema.tables
-                    WHERE table_catalog = %s
-                      AND table_schema  = %s
-                      AND table_type    = 'BASE TABLE'
+                    WHERE UPPER(table_catalog) = %s
+                      AND UPPER(table_schema)  = %s
                 """, (database.upper(), schema.upper()))
                 tbl_rows = cur.fetchall() or []
                 table_list = [r["TABLE_NAME"] for r in tbl_rows if isinstance(r, dict) and r.get("TABLE_NAME")]
@@ -87,8 +86,8 @@ class SnowflakeSourceAdapter(DataAdapter):
                 query_tables = f"""
                     SELECT TABLE_NAME, ROW_COUNT, BYTES, LAST_ALTERED
                     FROM information_schema.tables
-                    WHERE table_catalog = %s
-                      AND table_schema  = %s
+                    WHERE UPPER(table_catalog) = %s
+                      AND UPPER(table_schema)  = %s
                       AND UPPER(table_name) IN ({in_clause})
                 """
                 params_tbl = [database.upper(), schema.upper()] + [t.upper() for t in table_list]
@@ -110,8 +109,8 @@ class SnowflakeSourceAdapter(DataAdapter):
                 query_cols = f"""
                     SELECT TABLE_NAME, COLUMN_NAME
                     FROM information_schema.columns
-                    WHERE table_catalog = %s
-                      AND table_schema  = %s
+                    WHERE UPPER(table_catalog) = %s
+                      AND UPPER(table_schema)  = %s
                       AND UPPER(table_name) IN ({in_clause})
                     ORDER BY TABLE_NAME, ORDINAL_POSITION
                 """
@@ -123,14 +122,33 @@ class SnowflakeSourceAdapter(DataAdapter):
                         if col_name not in all_columns:
                             all_columns.append(col_name)
 
-                # Fallback for exact count if total_rows is 0 and only 1 table specified
-                if total_rows == 0 and len(table_list) == 1:
+                # Fallback for exact count if total_rows is 0 (e.g. for views or un-summarized tables)
+                if total_rows == 0 and table_list:
+                    for t_item in table_list[:5]:
+                        try:
+                            cur.execute(f'SELECT COUNT(*) AS CNT FROM "{database}"."{schema}"."{t_item}"')
+                            res = cur.fetchone()
+                            if isinstance(res, dict):
+                                total_rows += int(res.get("CNT") or res.get("cnt") or 0)
+                        except Exception:
+                            pass
+
+                # Fallback for columns across entire schema if still empty
+                if not all_columns:
                     try:
-                        t_single = table_list[0]
-                        cur.execute(f'SELECT COUNT(*) AS CNT FROM "{database}"."{schema}"."{t_single}"')
-                        res = cur.fetchone()
-                        if isinstance(res, dict):
-                            total_rows = int(res.get("CNT") or res.get("cnt") or 0)
+                        cur.execute("""
+                            SELECT COLUMN_NAME
+                            FROM information_schema.columns
+                            WHERE UPPER(table_catalog) = %s
+                              AND UPPER(table_schema)  = %s
+                            ORDER BY ORDINAL_POSITION
+                        """, (database.upper(), schema.upper()))
+                        c_rows = cur.fetchall() or []
+                        for c in c_rows:
+                            if isinstance(c, dict) and c.get("COLUMN_NAME"):
+                                cn = str(c["COLUMN_NAME"])
+                                if cn not in all_columns:
+                                    all_columns.append(cn)
                     except Exception:
                         pass
 

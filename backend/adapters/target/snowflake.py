@@ -1,7 +1,7 @@
 """
-adapters/target/snowflake.py
+adapters/source/snowflake.py
 -----------------------------
-Snowflake target adapter — supports single table, comma-separated tables, or schema-wide discovery.
+Snowflake source adapter — supports single table, comma-separated tables, or schema-wide discovery.
 Produces standard 15-field asset shape with exact row counts, column counts, column names, and size bytes.
 """
 
@@ -59,14 +59,13 @@ class SnowflakeTargetAdapter(DataAdapter):
         try:
             cur = conn.cursor(cursor_class=DictCursor)
 
-            # Discover table list
+            # Discover table list (both BASE TABLE and VIEW)
             if not table_raw or table_raw == "*":
                 cur.execute("""
                     SELECT TABLE_NAME
                     FROM information_schema.tables
-                    WHERE table_catalog = %s
-                      AND table_schema  = %s
-                      AND table_type    = 'BASE TABLE'
+                    WHERE UPPER(table_catalog) = %s
+                      AND UPPER(table_schema)  = %s
                 """, (database.upper(), schema.upper()))
                 tbl_rows = cur.fetchall() or []
                 table_list = [r["TABLE_NAME"] for r in tbl_rows if isinstance(r, dict) and r.get("TABLE_NAME")]
@@ -87,8 +86,8 @@ class SnowflakeTargetAdapter(DataAdapter):
                 query_tables = f"""
                     SELECT TABLE_NAME, ROW_COUNT, BYTES, LAST_ALTERED
                     FROM information_schema.tables
-                    WHERE table_catalog = %s
-                      AND table_schema  = %s
+                    WHERE UPPER(table_catalog) = %s
+                      AND UPPER(table_schema)  = %s
                       AND UPPER(table_name) IN ({in_clause})
                 """
                 params_tbl = [database.upper(), schema.upper()] + [t.upper() for t in table_list]
@@ -110,8 +109,8 @@ class SnowflakeTargetAdapter(DataAdapter):
                 query_cols = f"""
                     SELECT TABLE_NAME, COLUMN_NAME
                     FROM information_schema.columns
-                    WHERE table_catalog = %s
-                      AND table_schema  = %s
+                    WHERE UPPER(table_catalog) = %s
+                      AND UPPER(table_schema)  = %s
                       AND UPPER(table_name) IN ({in_clause})
                     ORDER BY TABLE_NAME, ORDINAL_POSITION
                 """
@@ -123,14 +122,33 @@ class SnowflakeTargetAdapter(DataAdapter):
                         if col_name not in all_columns:
                             all_columns.append(col_name)
 
-                # Fallback for exact count if total_rows is 0 and only 1 table specified
-                if total_rows == 0 and len(table_list) == 1:
+                # Fallback for exact count if total_rows is 0 (e.g. for views or un-summarized tables)
+                if total_rows == 0 and table_list:
+                    for t_item in table_list[:5]:
+                        try:
+                            cur.execute(f'SELECT COUNT(*) AS CNT FROM "{database}"."{schema}"."{t_item}"')
+                            res = cur.fetchone()
+                            if isinstance(res, dict):
+                                total_rows += int(res.get("CNT") or res.get("cnt") or 0)
+                        except Exception:
+                            pass
+
+                # Fallback for columns across entire schema if still empty
+                if not all_columns:
                     try:
-                        t_single = table_list[0]
-                        cur.execute(f'SELECT COUNT(*) AS CNT FROM "{database}"."{schema}"."{t_single}"')
-                        res = cur.fetchone()
-                        if isinstance(res, dict):
-                            total_rows = int(res.get("CNT") or res.get("cnt") or 0)
+                        cur.execute("""
+                            SELECT COLUMN_NAME
+                            FROM information_schema.columns
+                            WHERE UPPER(table_catalog) = %s
+                              AND UPPER(table_schema)  = %s
+                            ORDER BY ORDINAL_POSITION
+                        """, (database.upper(), schema.upper()))
+                        c_rows = cur.fetchall() or []
+                        for c in c_rows:
+                            if isinstance(c, dict) and c.get("COLUMN_NAME"):
+                                cn = str(c["COLUMN_NAME"])
+                                if cn not in all_columns:
+                                    all_columns.append(cn)
                     except Exception:
                         pass
 
@@ -151,7 +169,7 @@ class SnowflakeTargetAdapter(DataAdapter):
 
         return {
             "run_id":          run_id,
-            "asset_role":      "TARGET",
+            "asset_role":      self.role.upper(),
             "system_name":     "Snowflake",
             "system_type":     "DATA_WAREHOUSE",
             "database_name":   database,
@@ -172,7 +190,7 @@ def _unavailable(system: str, role: str, reason: str, run_id: Optional[str], con
     obj = config.get("table") or config.get("table_name") or config.get("schema") or "UNKNOWN_TABLE"
     return {
         "run_id":          run_id,
-        "asset_role":      "TARGET",
+        "asset_role":      role.upper(),
         "system_name":     system,
         "system_type":     "DATA_WAREHOUSE",
         "database_name":   config.get("database"),

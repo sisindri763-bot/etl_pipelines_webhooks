@@ -101,7 +101,7 @@ def get_pipeline_configs() -> list:
 
 def seed_local():
     """Write directly to local config DB."""
-    sys.path.insert(0, str(Path(__file__).parent))
+    sys.path.insert(0, str(Path(__file__).parent.parent))
     from config.db import init_db, register_pipeline
 
     init_db()

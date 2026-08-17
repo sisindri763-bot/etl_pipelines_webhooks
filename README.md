@@ -1,91 +1,158 @@
-# Webhook Server
+# Webhook Server & Metadata Integration Platform
 
-Production webhook server for dbt Cloud. Receives webhook events, fetches the dbt run log **and** snapshots from source and target systems, then saves a correlated result bundle per run.
-
----
-
-## Architecture
-
-```
-dbt Cloud ──POST──▶ /webhooks/dbt/<user_id>
-                          │
-                    look up config (job_id → config DB)
-                          │
-              ┌───────────┼───────────┐
-              ▼           ▼           ▼
-         Log adapter   Source      Target
-         (dbt API)     adapter     adapter
-              │           │           │
-              └───────────┴───────────┘
-                          │
-                   results/<job_id>/<run_id>.json
-```
-
-Failures in any one adapter are captured and stored — they do **not** crash the request or cause dbt to retry.
+Production webhook integration platform for **dbt Cloud**. Receives webhook events on job completion, fetches run execution logs and data asset snapshots (Source & Target systems), and correlates execution metadata into a central AWS RDS MySQL repository (`repository_db`).
 
 ---
 
-## Supported Adapters
+## 🏗️ Architecture
 
-| Role   | Type       | Notes                              |
-|--------|------------|------------------------------------|
-| Log    | `dbt`      | Real dbt Cloud Admin API v2        |
-| Source | `mysql`    | PyMySQL, pure-Python               |
-| Source | `snowflake`| snowflake-connector-python         |
-| Source | `csv`      | URL or local file path             |
-| Source | `excel`    | .xlsx URL or local file, openpyxl  |
-| Source | `api`      | Any JSON REST endpoint             |
-| Target | `snowflake`| Same as source                     |
-| Target | `mysql`    | Same as source                     |
-| Target | `csv`      | Same as source                     |
-| Target | `excel`    | Same as source                     |
-| Target | `api`      | Same as source                     |
+```
+                                ┌──────────────────────────────────┐
+                                │           Frontend UI            │
+                                │       (frontend/index.html)      │
+                                └────────────────┬─────────────────┘
+                                                 │ REST API
+                                                 ▼
+dbt Cloud ──POST──▶ /webhooks/dbt/<user_id> ──▶ [ Flask API Server ] (backend/app.py)
+                                                        │
+                                         Look up pipeline config in AWS RDS
+                                                        │
+                           ┌────────────────────────────┼────────────────────────────┐
+                           ▼                            ▼                            ▼
+                    Log Adapter                  Source Adapter               Target Adapter
+                  (dbt Admin API)               (MySQL/Snowflake/API)        (MySQL/Snowflake/API)
+                           │                            │                            │
+                           └────────────────────────────┼────────────────────────────┘
+                                                        │
+                                                        ▼
+                                       AWS RDS MySQL (repository_db)
+                                 - pipelines
+                                 - pipeline_runs
+                                 - source_asset_metadata
+                                 - target_asset_metadata
+```
 
-Every adapter returns the same shape:
-```json
-{
-  "connector": "mysql",
-  "role": "source",
-  "row_count": 12345,
-  "columns": ["id", "name", "amount"],
-  "sample": [...],
-  "extra": {},
-  "fetched_at": "2024-01-15T10:30:00"
-}
+Failures in any single adapter are captured and stored — they do **not** crash the request or cause dbt to retry.
+
+---
+
+## 🔌 Supported Adapters
+
+| Role   | Type        | Notes                               |
+|--------|-------------|-------------------------------------|
+| Log    | `dbt`       | Real dbt Cloud Admin API v2         |
+| Source | `mysql`     | PyMySQL connector                   |
+| Source | `snowflake` | snowflake-connector-python          |
+| Source | `csv`       | URL or local file path              |
+| Source | `excel`     | .xlsx URL or local file (openpyxl)  |
+| Source | `api`       | JSON REST endpoint                  |
+| Target | `snowflake` | Same as source                      |
+| Target | `mysql`     | Same as source                      |
+| Target | `csv`       | Same as source                      |
+| Target | `excel`     | Same as source                      |
+| Target | `api`       | Same as source                      |
+
+---
+
+## 📁 Directory Structure
+
+```
+web_hooks_server/
+├── backend/
+│   ├── app.py                     # Main Flask app & endpoints
+│   ├── wsgi.py                    # Production WSGI entrypoint for Gunicorn
+│   ├── requirements.txt           # Backend dependencies
+│   ├── .env                       # Central DB & server environment settings
+│   ├── .env.example               # Environment variables template
+│   ├── pyrightconfig.json         # Python linter configuration
+│   ├── adapters/                  # Modular adapter engines (log, source, target)
+│   │   ├── log/                   # dbt Cloud log fetcher
+│   │   ├── source/                # Source database/file adapters
+│   │   └── target/                # Target database/file adapters
+│   ├── config/                    # Database access layers (pipelines & run logs)
+│   │   ├── db.py                  # Config DB layer (repository_db.pipelines)
+│   │   ├── results_db.py          # Execution logs DB layer (repository_db.pipeline_runs)
+│   │   └── schema.sql             # SQL DDL reference
+│   ├── shared/                    # Shared dataclasses and models
+│   ├── scripts/                   # Organized admin utilities
+│   │   ├── setup_mysql.py         # AWS RDS database table creation script
+│   │   ├── seed_config.py         # Pipeline configuration seeder
+│   │   └── get_dbt_webhooks.py    # dbt Cloud API helper script
+│   ├── deploy/                    # Deployment configurations
+│   │   └── webhook.service        # Gunicorn systemd service file
+│   └── results/                   # Local result bundle cache (.json)
+├── frontend/
+│   └── index.html                 # Web Dashboard UI Interface
+├── README.md                      # Platform documentation
+└── .gitignore                     # Git ignore rules
 ```
 
 ---
 
-## Local Setup
+## 🚀 Getting Started
+
+### 1. Environment Setup
+
+Navigate to the `backend/` directory and configure environment variables:
 
 ```bash
-# 1. Install dependencies
+cd backend
+
+# Install dependencies
 pip install -r requirements.txt
 
-# 2. Copy env template
+# Configure environment variables
 cp .env.example .env
-# (edit .env — leave secrets blank for local dev)
+```
 
-# 3. Seed example pipeline configs
-python seed_config.py
+Your `backend/.env` file contains central server and database settings:
 
-# 4. Run the server
+```env
+# ── Central MySQL Database (AWS RDS) ───────────────────────────────────────────
+CENTRAL_DB_HOST=database-1.cbsuuwi6y4bg.eu-north-1.rds.amazonaws.com
+CENTRAL_DB_PORT=3306
+CENTRAL_DB_NAME=repository_db
+CENTRAL_DB_USER=admin
+CENTRAL_DB_PASSWORD=Saiyalla
+
+# ── Server & Security ────────────────────────────────────────────────────────
+PORT=5000
+FLASK_DEBUG=1
+LOG_LEVEL=INFO
+ADMIN_TOKEN=your_admin_secret_token
+WEBHOOK_SECRET=
+```
+
+### 2. Initialize Central Database (AWS RDS MySQL)
+
+Run the database setup script to create database `repository_db` and tables (`pipelines`, `pipeline_runs`, `source_asset_metadata`, `target_asset_metadata`):
+
+```bash
+python scripts/setup_mysql.py
+```
+
+### 3. Run the Server
+
+```bash
 python app.py
 ```
 
-The server starts on `http://localhost:5000`.
+The server starts on `http://localhost:5000` and automatically serves the dashboard UI from `frontend/index.html`.
 
 ---
 
-## API Reference
+## 📡 API Reference
+
+### `GET /`
+Serves the interactive Web Dashboard UI (`frontend/index.html`).
+
+### `GET /health`
+Returns health check status and loaded adapter registry.
+
+---
 
 ### `POST /webhooks/dbt/<user_id>`
-Receives a dbt Cloud webhook. dbt sends this automatically on job completion.
-
-**Headers** (optional if `WEBHOOK_SECRET` is set):
-```
-Authorization: Bearer <hmac_signature>
-```
+Receives a dbt Cloud webhook. Looks up registered pipeline credentials dynamically from `repository_db.pipelines` and executes all adapters.
 
 **Payload** (sent by dbt Cloud):
 ```json
@@ -96,28 +163,10 @@ Authorization: Bearer <hmac_signature>
 }
 ```
 
-**Response** (`200 OK`):
-```json
-{
-  "correlation_id": "987654",
-  "job_id": "111111",
-  "status": "success",
-  "log": { ... },
-  "source": { ... },
-  "target": { ... }
-}
-```
-
 ---
 
 ### `POST /admin/register-config`
-Register or update a pipeline config. Safe to call while the server is running.
-
-**Headers:**
-```
-Authorization: Bearer <ADMIN_TOKEN>
-Content-Type: application/json
-```
+Register or update a pipeline configuration directly in `repository_db.pipelines`.
 
 **Body:**
 ```json
@@ -150,83 +199,31 @@ Content-Type: application/json
 }
 ```
 
-**Curl:**
-```bash
-curl -X POST https://your-app.onrender.com/admin/register-config \
-     -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
-     -H "Content-Type: application/json" \
-     -d @pipeline.json
-```
-
 ---
 
 ### `GET /admin/list-configs`
-List all registered pipelines. Passwords are masked in the response.
-
-```bash
-curl https://your-app.onrender.com/admin/list-configs \
-     -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
-```
+List all registered pipelines in `repository_db.pipelines` (credentials masked).
 
 ---
 
 ### `DELETE /admin/delete-config/<job_id>`
-Remove a pipeline config.
-
-```bash
-curl -X DELETE https://your-app.onrender.com/admin/delete-config/111111 \
-     -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
-```
+Remove a pipeline configuration from `repository_db.pipelines`.
 
 ---
 
-### `GET /health`
-Health check — returns adapter registry and status.
-
-```bash
-curl https://your-app.onrender.com/health
-```
+### `GET /admin/runs`
+List recent pipeline execution runs stored in `repository_db.pipeline_runs`.
 
 ---
 
-## Deploy to Render
-
-1. Push this repo to GitHub
-2. New Web Service → connect repo
-3. **Build command:** `pip install -r requirements.txt`
-4. **Start command:** `gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120`
-5. Add environment variables:
-   - `ADMIN_TOKEN` → generate with `python -c "import secrets; print(secrets.token_hex(32))"`
-   - `WEBHOOK_SECRET` → from dbt Cloud → Account Settings → Webhooks
-   - `LOG_LEVEL` → `INFO`
-6. Deploy → copy the service URL
-
-7. Register your first pipeline:
-```bash
-curl -X POST https://your-app.onrender.com/admin/register-config \
-     -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "job_id": "YOUR_DBT_JOB_ID",
-       "tool_type": "dbt",
-       "tool_config": { "account_id": "YOUR_ACCOUNT_ID", "api_token": "YOUR_TOKEN" },
-       "source_type": "mysql",
-       "source_config": { "host": "...", "database": "...", "table": "...", "username": "...", "password": "..." },
-       "target_type": "snowflake",
-       "target_config": { "account": "...", "warehouse": "...", "database": "...", "schema": "PUBLIC", "table": "...", "username": "...", "password": "..." }
-     }'
-```
-
-8. In dbt Cloud → Account Settings → Webhooks:
-   - URL: `https://your-app.onrender.com/webhooks/dbt/YOUR_USER_ID`
-   - Events: `job.run.completed`
-   - Secret: same as `WEBHOOK_SECRET`
+### `GET /admin/runs/<run_id>`
+Fetch full execution run detail including log, source asset snapshot, and target asset snapshot.
 
 ---
 
-## Result Bundles
+## 📊 Result Bundles
 
-Results are saved to `results/<job_id>/<run_id>.json`:
+Correlated execution results are saved to `results/<job_id>/<run_id>.json` and stored relationally in AWS RDS MySQL (`repository_db`):
 
 ```json
 {
@@ -242,67 +239,19 @@ Results are saved to `results/<job_id>/<run_id>.json`:
     "tool": "dbt",
     "run_id": "987654",
     "status": "success",
-    "duration_s": 42.3,
-    "steps": [...]
+    "duration_s": 42.3
   },
   "source": {
     "connector": "mysql",
     "role": "source",
     "row_count": 50000,
-    "columns": ["id", "amount", "created_at"],
-    "sample": [...]
+    "columns": ["id", "amount", "created_at"]
   },
   "target": {
     "connector": "snowflake",
     "role": "target",
     "row_count": 50000,
-    "columns": ["ID", "AMOUNT", "CREATED_AT"],
-    "sample": [...]
+    "columns": ["ID", "AMOUNT", "CREATED_AT"]
   }
 }
-```
-
-**Status values:**
-- `success` — all 3 fetches succeeded
-- `partial` — 1 or 2 fetches failed (still saved what succeeded)
-- `failed` — all 3 fetches failed
-
----
-
-## Project Structure
-
-```
-web_hooks_server/
-├── app.py                        ← Main Flask app (all routes)
-├── requirements.txt
-├── seed_config.py                ← Seed config DB (local or remote)
-├── .env.example                  ← Env var template
-├── adapters/
-│   ├── __init__.py               ← Top-level registry
-│   ├── log/
-│   │   ├── base.py               ← LogAdapter ABC
-│   │   ├── dbt.py                ← dbt Cloud Admin API
-│   │   └── __init__.py           ← LOG_ADAPTERS registry
-│   ├── source/
-│   │   ├── base.py               ← DataAdapter ABC
-│   │   ├── mysql.py
-│   │   ├── snowflake.py
-│   │   ├── csv_adapter.py
-│   │   ├── excel_adapter.py
-│   │   ├── api_adapter.py
-│   │   └── __init__.py           ← SOURCE_ADAPTERS registry
-│   └── target/
-│       ├── base.py
-│       ├── snowflake.py
-│       ├── mysql.py
-│       ├── csv_adapter.py
-│       ├── excel_adapter.py
-│       ├── api_adapter.py
-│       └── __init__.py           ← TARGET_ADAPTERS registry
-├── config/
-│   ├── db.py                     ← SQLite config DB (Postgres-ready)
-│   └── schema.sql                ← DDL reference
-├── shared/
-│   └── models.py                 ← Shared dataclasses
-└── results/                      ← Job result bundles saved here
 ```

@@ -1,4 +1,4 @@
-# .gitignore
+﻿# .gitignore
 
 # Virtual environment
 .venv/
@@ -14,25 +14,26 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-.venv/
-venv/
-env/
 
-# Secrets
+# Secrets & Environment
 .env
+backend/.env
+*.env
 
-# Config DB (local SQLite)
+# Local Databases (SQLite)
 config/pipelines.db
 config/*.db
+backend/pipelines.db
+backend/results.db
+backend/*.db
 
-# Result bundles (can be large — store externally in production)
-results/*/
+# Result bundles
+results/
+backend/results/
 
-# IDE
+# IDE & OS
 .vscode/
 .idea/
 *.swp
-
-# OS
 .DS_Store
 Thumbs.db

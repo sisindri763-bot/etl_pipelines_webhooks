@@ -453,7 +453,10 @@ def admin_delete_config(job_id: str):
 
 @app.route("/", methods=["GET"])
 def serve_dashboard():
-    return send_file(Path(__file__).parent / "index.html")
+    frontend_html = Path(__file__).parent.parent / "frontend" / "index.html"
+    if not frontend_html.exists():
+        frontend_html = Path(__file__).parent / "index.html"
+    return send_file(frontend_html)
 
 
 @app.route("/health", methods=["GET"])

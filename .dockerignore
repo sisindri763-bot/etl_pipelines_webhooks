@@ -1,0 +1,15 @@
+﻿.git
+.gitignore
+.vscode
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+backend/.env
+backend/pipelines.db
+backend/results.db
+backend/results/
+results/
+venv/
+.venv/

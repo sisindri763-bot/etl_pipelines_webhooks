@@ -49,7 +49,7 @@ def _get_mysql_conn() -> Any:
     host = os.getenv("CENTRAL_DB_HOST") or os.getenv("MYSQL_HOST") or "localhost"
     port_val = os.getenv("CENTRAL_DB_PORT") or os.getenv("MYSQL_PORT") or "3306"
     port = int(port_val)
-    db = os.getenv("CENTRAL_DB_NAME") or os.getenv("MYSQL_DATABASE") or "webhooks_db"
+    db = os.getenv("CENTRAL_DB_NAME") or os.getenv("MYSQL_DATABASE") or "repository_db"
     user = os.getenv("CENTRAL_DB_USER") or os.getenv("MYSQL_USER") or "admin"
     password = os.getenv("CENTRAL_DB_PASSWORD") or os.getenv("MYSQL_PASSWORD") or ""
     

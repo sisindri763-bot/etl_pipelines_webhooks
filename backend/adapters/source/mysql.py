@@ -8,7 +8,7 @@ import datetime
 import logging
 from typing import Any, Dict, Optional, List
 
-from tenacity import retry, stop_after_attempt, wait_exponential, before_sleep_log
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential, before_sleep_log
 
 try:
     import pymysql  # type: ignore # pyright: ignore[reportMissingImports]
@@ -25,8 +25,9 @@ class MySQLSourceAdapter(DataAdapter):
     role = "source"
 
     @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=3, max=15),
+        retry=retry_if_exception_type((TimeoutError, ConnectionError)),
+        stop=stop_after_attempt(2),
+        wait=wait_exponential(multiplier=1, min=1, max=3),
         before_sleep=before_sleep_log(logger, logging.WARNING),
         reraise=True,
     )

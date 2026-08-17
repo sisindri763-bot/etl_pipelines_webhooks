@@ -2,7 +2,7 @@
 adapters/source/snowflake.py
 -----------------------------
 Snowflake source adapter — supports single table, comma-separated tables, or schema-wide discovery.
-Produces standard 15-field asset shape with exact row counts, column counts, column names, and size bytes.
+Strips whitespace from configs and computes total row counts, column counts, column names, and size bytes.
 """
 
 import datetime
@@ -37,13 +37,13 @@ class SnowflakeTargetAdapter(DataAdapter):
         if snowflake is None or not hasattr(snowflake, "connector"):
             return _unavailable("Snowflake", self.role, "snowflake-connector-python not installed", run_id, config)
 
-        account   = config.get("account", "")
-        warehouse = config.get("warehouse", "")
-        database  = config.get("database", "")
-        schema    = config.get("schema") or "PUBLIC"
+        account   = str(config.get("account") or "").strip()
+        warehouse = str(config.get("warehouse") or "").strip()
+        database  = str(config.get("database") or config.get("dbname") or "").strip()
+        schema    = str(config.get("schema") or config.get("schema_name") or "PUBLIC").strip()
         table_raw = str(config.get("table") or config.get("table_name") or "").strip()
-        username  = config.get("username") or config.get("user") or ""
-        password  = config.get("password", "")
+        username  = str(config.get("username") or config.get("user") or "").strip()
+        password  = str(config.get("password") or "").strip()
         sf_role   = config.get("role")
         sample_n  = int(config.get("sample_rows", 10))
 
@@ -68,7 +68,7 @@ class SnowflakeTargetAdapter(DataAdapter):
                       AND UPPER(table_schema)  = %s
                 """, (database.upper(), schema.upper()))
                 tbl_rows = cur.fetchall() or []
-                table_list = [r["TABLE_NAME"] for r in tbl_rows if isinstance(r, dict) and r.get("TABLE_NAME")]
+                table_list = [str(r["TABLE_NAME"]).strip() for r in tbl_rows if isinstance(r, dict) and r.get("TABLE_NAME")]
             elif "," in table_raw:
                 table_list = [t.strip() for t in table_raw.split(",") if t.strip()]
             else:
@@ -118,13 +118,13 @@ class SnowflakeTargetAdapter(DataAdapter):
                 col_rows = cur.fetchall() or []
                 for c in col_rows:
                     if isinstance(c, dict) and c.get("COLUMN_NAME"):
-                        col_name = str(c["COLUMN_NAME"])
+                        col_name = str(c["COLUMN_NAME"]).strip()
                         if col_name not in all_columns:
                             all_columns.append(col_name)
 
                 # Fallback for exact count if total_rows is 0 (e.g. for views or un-summarized tables)
                 if total_rows == 0 and table_list:
-                    for t_item in table_list[:5]:
+                    for t_item in table_list[:10]:
                         try:
                             cur.execute(f'SELECT COUNT(*) AS CNT FROM "{database}"."{schema}"."{t_item}"')
                             res = cur.fetchone()
@@ -146,7 +146,7 @@ class SnowflakeTargetAdapter(DataAdapter):
                         c_rows = cur.fetchall() or []
                         for c in c_rows:
                             if isinstance(c, dict) and c.get("COLUMN_NAME"):
-                                cn = str(c["COLUMN_NAME"])
+                                cn = str(c["COLUMN_NAME"]).strip()
                                 if cn not in all_columns:
                                     all_columns.append(cn)
                     except Exception:
@@ -187,14 +187,14 @@ class SnowflakeTargetAdapter(DataAdapter):
 
 
 def _unavailable(system: str, role: str, reason: str, run_id: Optional[str], config: Dict[str, Any]) -> Dict[str, Any]:
-    obj = config.get("table") or config.get("table_name") or config.get("schema") or "UNKNOWN_TABLE"
+    obj = str(config.get("table") or config.get("table_name") or config.get("schema") or "UNKNOWN_TABLE").strip()
     return {
         "run_id":          run_id,
         "asset_role":      role.upper(),
         "system_name":     system,
         "system_type":     "DATA_WAREHOUSE",
-        "database_name":   config.get("database"),
-        "schema_name":     config.get("schema", "PUBLIC"),
+        "database_name":   str(config.get("database") or "").strip(),
+        "schema_name":     str(config.get("schema") or "PUBLIC").strip(),
         "object_name":     obj,
         "object_type":     "TABLE",
         "row_count":       0,

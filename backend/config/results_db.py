@@ -474,8 +474,8 @@ def save_source_asset_metadata(
     source_data: Dict[str, Any],
 ) -> str:
     """Save source snapshot to source_asset_metadata table."""
-    meta_id = str(uuid.uuid4())
     run_uuid = _to_valid_uuid(run_id)
+    meta_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"source_{run_uuid}"))
 
     cols_val = source_data.get("columns") or source_data.get("column_names")
     col_names_str = ", ".join([str(c) for c in cols_val]) if isinstance(cols_val, (list, tuple)) else (str(cols_val) if cols_val else None)
@@ -575,8 +575,8 @@ def save_target_asset_metadata(
     target_data: Dict[str, Any],
 ) -> str:
     """Save target snapshot to target_asset_metadata table."""
-    meta_id = str(uuid.uuid4())
     run_uuid = _to_valid_uuid(run_id)
+    meta_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"target_{run_uuid}"))
 
     cols_val = target_data.get("columns") or target_data.get("column_names")
     col_names_str = ", ".join([str(c) for c in cols_val]) if isinstance(cols_val, (list, tuple)) else (str(cols_val) if cols_val else None)

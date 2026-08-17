@@ -7,6 +7,7 @@ Gracefully handles missing credentials, custom base URLs, and 401/404 API respon
 """
 
 import logging
+import re
 import uuid
 from typing import Any, Dict, Optional
 
@@ -25,7 +26,7 @@ _DBT_STATUS_MAP = {
     3:  "running",
     10: "success",
     20: "failed",
-    30: "failed",
+    30: "cancelled",
 }
 
 
@@ -56,7 +57,6 @@ class DbtCloudLogAdapter(LogAdapter):
         orchestrator_dag_id  = context.get("orchestrator_dag_id")
         orchestrator_task_id = context.get("orchestrator_task_id")
         orchestrator_run_id  = context.get("orchestrator_run_id")
-        execution_mode       = str(orchestrator_tool) if orchestrator_tool else "dbt_cloud_job"
 
         try:
             if not account_id or not api_token or not run_id:
@@ -67,7 +67,9 @@ class DbtCloudLogAdapter(LogAdapter):
 
             data       = run_data.get("data", {})
             status_int = data.get("status", 0)
-            status_str = _DBT_STATUS_MAP.get(status_int, f"success")
+            status_str = _DBT_STATUS_MAP.get(status_int, "success")
+            if status_str == "error":
+                status_str = "failed"
 
             steps = []
             for step in data.get("run_steps", []):
@@ -80,28 +82,60 @@ class DbtCloudLogAdapter(LogAdapter):
                 })
 
             triggered_cause = None
-            trigger_obj = data.get("trigger") or {}
+            trigger_obj = data.get("trigger") if isinstance(data.get("trigger"), dict) else {}
             if isinstance(trigger_obj, dict):
                 triggered_cause = trigger_obj.get("cause") or trigger_obj.get("github_pull_request_id")
+                cause_category  = str(trigger_obj.get("cause_category") or "").strip().lower()
+            else:
+                cause_category  = ""
 
+            # Determine dynamic execution mode
+            if orchestrator_tool:
+                execution_mode = "orchestrated"
+            elif cause_category:
+                execution_mode = cause_category  # "ui", "schedule", "github", "api"
+            else:
+                execution_mode = "native"
+
+            # Parse short, clean, human-readable error message
             error_message = None
-            if status_str in ["error", "failed", "cancelled", "20", "30"]:
-                step_errors = []
-                for step in data.get("run_steps", []):
-                    step_logs = str(step.get("logs") or "")
-                    if step.get("status") == 20 or "ERROR" in step_logs or "Error" in step_logs:
-                        for line in step_logs.splitlines():
-                            line_clean = line.strip()
-                            if any(kw in line_clean for kw in ["Database Error", "SQL compilation error", "invalid identifier", "Error [", "SyntaxError"]):
-                                clean_line = re.sub(r'\x1b\[[0-9;]*m', '', line_clean)
-                                if clean_line not in step_errors:
-                                    step_errors.append(clean_line)
-                if step_errors:
-                    error_message = " | ".join(step_errors[:2])
-                else:
-                    error_message = data.get("status_message") or "Run failed — check dbt Cloud logs"
-            if status_str in ["error", "cancelled"]:
+            if status_str in ["failed", "error"]:
                 status_str = "failed"
+                model_name = None
+                reason_str = None
+                
+                for step in data.get("run_steps", []):
+                    if isinstance(step, dict):
+                        step_logs = str(step.get("logs") or "")
+                        for raw_line in step_logs.split("\n"):
+                            line = re.sub(r'\x1b\[[0-9;]*[mGKB]', '', raw_line).strip()
+                            line = re.sub(r'^\d{2}:\d{2}:\d{2}\s+', '', line).strip()
+
+                            # Match model name
+                            m_model = re.search(r'model\s+([A-Za-z0-9_\.]+)', line)
+                            if m_model and not model_name and "target/run" not in line:
+                                raw_mod = m_model.group(1).split(".")[-1]
+                                if raw_mod and raw_mod not in ["sql", "view", "table"]:
+                                    model_name = raw_mod
+
+                            # Match specific error line
+                            if "invalid identifier" in line.lower() or "syntax error" in line.lower() or "compilation error" in line.lower():
+                                reason_str = line
+                            elif "Database Error" in line and not reason_str:
+                                reason_str = line
+
+                if model_name and reason_str:
+                    reason_clean = re.sub(r'\(target/run/[^)]+\)', '', reason_str).strip()
+                    reason_clean = re.sub(r'^Error\s*\[[^\]]+\]:\s*', '', reason_clean).strip()
+                    reason_clean = re.sub(r'^\s*\[Snowflake\]\s*\d+\s*\(\d+\):\s*', '', reason_clean).strip()
+                    error_message = f"Model '{model_name}': {reason_clean}"
+                elif reason_str:
+                    reason_clean = re.sub(r'\(target/run/[^)]+\)', '', reason_str).strip()
+                    reason_clean = re.sub(r'^Error\s*\[[^\]]+\]:\s*', '', reason_clean).strip()
+                    reason_clean = re.sub(r'^\s*\[Snowflake\]\s*\d+\s*\(\d+\):\s*', '', reason_clean).strip()
+                    error_message = reason_clean[:200]
+                else:
+                    error_message = data.get("status_message") or "dbt run failed"
 
             job_obj = data.get("job") if isinstance(data.get("job"), dict) else {}
             pipeline_name = job_obj.get("name") if isinstance(job_obj, dict) else None
@@ -113,7 +147,7 @@ class DbtCloudLogAdapter(LogAdapter):
                 "status":               status_str,
                 "start_time":           data.get("started_at"),
                 "end_time":             data.get("finished_at"),
-                "duration":             data.get("run_duration") or data.get("duration"),
+                "duration":             data.get("duration"),
                 "tool_name":            "dbt",
                 "rows_read":            None,
                 "rows_written":         None,
@@ -133,7 +167,7 @@ class DbtCloudLogAdapter(LogAdapter):
                 "id":                   str(uuid.uuid4()),
                 "pipeline_id":          str(run_id or "unknown"),
                 "pipeline_name":        "dbt_job_run",
-                "status":               "success",
+                "status":               "failed",
                 "start_time":           None,
                 "end_time":             None,
                 "duration":             None,
@@ -142,7 +176,7 @@ class DbtCloudLogAdapter(LogAdapter):
                 "rows_written":         None,
                 "error_message":        str(exc),
                 "raw_log":              {"api_warning": str(exc), "run_id": run_id},
-                "execution_mode":       execution_mode,
+                "execution_mode":       "native",
                 "triggered_by":         context.get("triggered_by"),
                 "orchestrator_tool":    orchestrator_tool,
                 "orchestrator_dag_id":  orchestrator_dag_id,

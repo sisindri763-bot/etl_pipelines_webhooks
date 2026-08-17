@@ -1,4 +1,4 @@
-﻿# Use official lightweight Python image
+# Use official lightweight Python image
 FROM python:3.11-slim
 
 # Prevent Python from writing .pyc files and enable unbuffered logging
@@ -34,4 +34,4 @@ EXPOSE 5000
 WORKDIR /app/backend
 
 # Command to run production WSGI server Gunicorn
-CMD [" gunicorn\, \--bind\, \0.0.0.0:5000\, \--workers\, \4\, \--timeout\, \120\, \wsgi:app\]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120", "wsgi:app"]

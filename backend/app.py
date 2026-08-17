@@ -295,7 +295,7 @@ def dbt_webhook(user_id: str):
     elif n_errors == 3:
         result["status"] = "failed"
     else:
-        result["status"] = "partial"
+        result["status"] = "failed"
 
     result["completed_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
@@ -308,7 +308,7 @@ def dbt_webhook(user_id: str):
 
         log_val = result.get("log")
         orch_tool = orchestrator_context.get("orchestrator_tool") or (log_val.get("orchestrator_tool") if isinstance(log_val, dict) else None)
-        exec_mode = "orchestrated" if orch_tool else "native"
+        exec_mode = str(orch_tool) if orch_tool else "dbt_cloud_job"
 
         if isinstance(log_val, dict):
             log_payload = dict(log_val)

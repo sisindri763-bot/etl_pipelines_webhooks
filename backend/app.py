@@ -80,10 +80,26 @@ def add_cors_headers(response):
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, DELETE, OPTIONS"
     return response
 
-@app.route("/", methods=["OPTIONS"])
-@app.route("/<path:path>", methods=["OPTIONS"])
-def options_handler(path=None):
-    return "", 200
+@app.before_request
+def handle_options_preflight():
+    if request.method == "OPTIONS":
+        res = app.make_default_options_response()
+        res.headers["Access-Control-Allow-Origin"] = "*"
+        res.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        res.headers["Access-Control-Allow-Methods"] = "GET, POST, DELETE, OPTIONS"
+        return res, 200
+
+@app.route("/", methods=["GET"])
+@app.route("/vithi", methods=["GET"])
+@app.route("/index.html", methods=["GET"])
+def serve_ui():
+    f_index = Path(__file__).parent.parent / "frontend" / "index.html"
+    if f_index.exists():
+        return send_file(f_index)
+    local_index = Path(__file__).parent / "index.html"
+    if local_index.exists():
+        return send_file(local_index)
+    abort(404, description="Index HTML file not found")
 
 # Initialise both DBs on startup
 init_db()
